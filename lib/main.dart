@@ -1,168 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 import 'data/database.dart';
+import 'theme/app_theme.dart';
+import 'screens/intro_screen.dart';
+import 'screens/main_shell.dart';
+import 'screens/today_tasks_screen.dart' show database;
 
-// Create a global instance of the database (for simplicity in this simple example)
-final database = AppDatabase();
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Local Database Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(),
-    );
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class _MyAppState extends State<MyApp> {
+  bool _showIntro = true;
+  bool _isLoading = true;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
+  void initState() {
+    super.initState();
+    _checkIntroStatus();
+  }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final TextEditingController _controller = TextEditingController();
+  Future<void> _checkIntroStatus() async {
+    final settings = await database.getSettings();
+    setState(() {
+      _showIntro = !settings.hasSeenIntro;
+      _isLoading = false;
+    });
+  }
 
-  Future<void> _addTodo() async {
-    final title = _controller.text;
-    if (title.isNotEmpty) {
-      await database.insertTodoItem(
-        TodoItemsCompanion(
-          title: drift.Value(title),
-          description: const drift.Value('Created via app'),
-        ),
+  void _onIntroComplete() async {
+    await database.updateSettings(
+      const AppSettingsCompanion(hasSeenIntro: drift.Value(true)),
+    );
+    setState(() => _showIntro = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
-      _controller.clear();
     }
-  }
 
-  Future<void> _deleteTodo(TodoItem item) async {
-    await database.deleteTodoItem(item);
-  }
-
-  Future<void> _toggleComplete(TodoItem item) async {
-    await database.updateTodoItem(
-      item.copyWith(isCompleted: !item.isCompleted),
+    return MaterialApp(
+      title: 'Task Scheduler',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      home: _showIntro
+          ? IntroScreen(onComplete: _onIntroComplete)
+          : const MainShell(),
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Drift SQLite CRUD'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.playlist_add_check),
-            tooltip: 'Run Custom SQL (Completed)',
-            onPressed: () async {
-              final completed = await database.getCompletedTodosCustomSql();
-              if (context.mounted) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Custom SQL Result'),
-                    content: Text(
-                      'Found ${completed.length} completed items via raw SQL:\n\n' +
-                          completed.map((e) => '- ${e.title}').join('\n'),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter task name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                IconButton(onPressed: _addTodo, icon: const Icon(Icons.add)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<List<TodoItem>>(
-              stream: database.watchAllTodoItems(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  final items = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return ListTile(
-                        title: Text(
-                          item.title,
-                          style: TextStyle(
-                            decoration: item.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
-                        subtitle: Text(item.description ?? ''),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: item.isCompleted,
-                              onChanged: (_) => _toggleComplete(item),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _deleteTodo(item),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  return const Center(child: CircularProgressIndicator());
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }
