@@ -139,6 +139,15 @@ class AppDatabase extends _$AppDatabase {
     return sessions.fold<int>(0, (sum, s) => sum + s.durationSeconds);
   }
 
+  Future<int> getFocusTimeInRange(DateTime start, DateTime end) async {
+    final sessions =
+        await (select(pomodoroSessions)
+              ..where((s) => s.completedAt.isBiggerOrEqualValue(start))
+              ..where((s) => s.completedAt.isSmallerThanValue(end)))
+            .get();
+    return sessions.fold<int>(0, (sum, s) => sum + s.durationSeconds);
+  }
+
   // ============ SETTINGS ============
   Future<AppSetting> getSettings() async {
     final result = await select(appSettings).getSingleOrNull();

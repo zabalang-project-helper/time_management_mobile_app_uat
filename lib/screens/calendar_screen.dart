@@ -78,6 +78,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  void _showEditTaskDialog(Task task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddTaskDialog(
+        existingTask: task,
+        onSave: (companions) async {
+          if (companions.length == 1 &&
+              companions.first.repeatId.value == null) {
+            // Single task update (or detached from repeat)
+            final companion = companions.first;
+            await database.updateTask(
+              task.copyWith(
+                title: companion.title.value,
+                description: drift.Value(companion.description.value),
+                color: companion.color.value,
+                priority: companion.priority.value,
+                dueDate: companion.dueDate.value,
+                isRepeating: companion.isRepeating.value,
+                repeatEndDate: companion.repeatEndDate.present
+                    ? drift.Value(companion.repeatEndDate.value)
+                    : drift.Value(task.repeatEndDate),
+                categoryId: companion.categoryId.present
+                    ? drift.Value(companion.categoryId.value)
+                    : drift.Value(task.categoryId),
+                repeatId: drift.Value(null), // Detach if single update
+              ),
+            );
+          } else {
+            // Multi-task insert implies rewrite/new series.
+            // Delete the OLD task (this instance).
+            await database.deleteTask(task);
+
+            // Insert all New
+            await database.batch((batch) {
+              for (var c in companions) {
+                batch.insert(database.tasks, c);
+              }
+            });
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -254,6 +300,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           }
                         },
                         onDelete: () => _deleteTask(task),
+                        onTap: () => _showEditTaskDialog(task),
                       );
                     },
                   );

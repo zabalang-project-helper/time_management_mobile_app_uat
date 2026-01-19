@@ -4,6 +4,8 @@ import '../data/database.dart';
 import '../theme/app_theme.dart';
 import 'today_tasks_screen.dart' show database;
 
+enum DateFilter { today, thisWeek, allTime, custom }
+
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
 
@@ -12,76 +14,115 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  DateTimeRange? _selectedDateRange;
+  DateFilter _selectedFilter = DateFilter.today;
+  DateTimeRange? _customDateRange;
 
-  Future<void> _selectDateRange() async {
+  // Cache for the current date range to query
+  DateTimeRange _getCurrentRange() {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    switch (_selectedFilter) {
+      case DateFilter.today:
+        return DateTimeRange(
+          start: todayStart,
+          end: todayStart.add(const Duration(days: 1)),
+        );
+      case DateFilter.thisWeek:
+        // Assuming week starts on Monday
+        final startOfWeek = todayStart.subtract(
+          Duration(days: todayStart.weekday - 1),
+        );
+        return DateTimeRange(
+          start: startOfWeek,
+          end: startOfWeek.add(const Duration(days: 7)),
+        );
+      case DateFilter.allTime:
+        // Distant past to distant future
+        return DateTimeRange(start: DateTime(2020), end: DateTime(2030));
+      case DateFilter.custom:
+        return _customDateRange ??
+            DateTimeRange(
+              start: todayStart,
+              end: todayStart.add(const Duration(days: 1)),
+            );
+    }
+  }
+
+  String _getFilterLabel(DateFilter filter) {
+    switch (filter) {
+      case DateFilter.today:
+        return 'Today';
+      case DateFilter.thisWeek:
+        return 'This Week';
+      case DateFilter.allTime:
+        return 'All Time';
+      case DateFilter.custom:
+        return 'Custom';
+    }
+  }
+
+  Future<void> _pickCustomRange() async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      initialDateRange: _selectedDateRange,
+      initialDateRange: _customDateRange,
+      saveText: 'Apply',
     );
     if (picked != null) {
-      setState(() => _selectedDateRange = picked);
+      setState(() {
+        _customDateRange = picked;
+        _selectedFilter = DateFilter.custom;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final range = _getCurrentRange();
+
     return Scaffold(
       body: SafeArea(
-        // Use StreamBuilder to listen to all tasks for real-time updates
         child: StreamBuilder<List<Task>>(
           stream: database.watchAllTasks(),
           builder: (context, tasksSnapshot) {
             final allTasks = tasksSnapshot.data ?? [];
 
-            // Calculate stats from the stream
-            final completed = allTasks.where((t) => t.isCompleted).length;
-            final incomplete = allTasks.where((t) => !t.isCompleted).length;
-            final total = completed + incomplete;
+            // Filter tasks by the selected range (using DueDate)
+            // Note: For All Time, we assume all tasks. For others, due date check.
+            final rangeTasks = _selectedFilter == DateFilter.allTime
+                ? allTasks
+                : allTasks.where((t) {
+                    return t.dueDate.isBefore(range.end) &&
+                        t.dueDate.isAfter(
+                          range.start.subtract(const Duration(seconds: 1)),
+                        );
+                  }).toList();
 
-            // Range stats
-            List<Task> rangeTasks = [];
-            if (_selectedDateRange != null) {
-              rangeTasks = allTasks.where((t) {
-                // Determine if task falls in range (by due date or completed date?)
-                // Usually due date or created date. Let's use Due Date.
-                final date = t.dueDate;
-                return date.isAfter(
-                      _selectedDateRange!.start.subtract(
-                        const Duration(seconds: 1),
-                      ),
-                    ) &&
-                    date.isBefore(
-                      _selectedDateRange!.end.add(const Duration(days: 1)),
-                    );
-              }).toList();
-            }
+            // Calculate Counts
+            final completedCount = rangeTasks
+                .where((t) => t.isCompleted)
+                .length;
+            final incompleteCount = rangeTasks
+                .where((t) => !t.isCompleted)
+                .length;
+            final totalCount = rangeTasks.length;
+            final completionRate = totalCount == 0
+                ? 0
+                : ((completedCount / totalCount) * 100).round();
 
-            // Calculate weekly data
-            final now = DateTime.now();
-            final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-            final Map<int, int> weeklyData = {};
-            for (int i = 0; i < 7; i++) {
-              final date = DateTime(
-                startOfWeek.year,
-                startOfWeek.month,
-                startOfWeek.day,
-              ).add(Duration(days: i));
-              final dayTasks = allTasks.where((t) {
-                final taskDate = DateTime(
-                  t.dueDate.year,
-                  t.dueDate.month,
-                  t.dueDate.day,
-                );
-                return taskDate.isAtSameMomentAs(date);
-              }).length;
-              weeklyData[i + 1] = dayTasks;
-            }
+            // Calculate Weekly Data (Always show this week's activity regardless of filter?
+            // Or show distribution within the selected range?)
+            // The prompt asked for "Weekly Overview" previously. Let's keep "Weekly Overview" generally available
+            // or adapt it. Let's keep standard weekly overview from "Now" for context, separate from filter.
+            // OR if filter is week, show that week.
+            // Let's stick to "Weekly Overview" as "Last 7 Days" or "This Week" always for the chart,
+            // otherwise a bar chart for "Today" is 1 bar.
+            final weeklyData = _calculateWeeklyData(allTasks);
 
-            return FutureBuilder<Map<String, int>>(
-              future: _getAdditionalStats(),
+            return FutureBuilder<Map<String, dynamic>>(
+              future: _getAsyncStats(range),
               builder: (context, statsSnapshot) {
                 final focusSeconds = statsSnapshot.data?['focusSeconds'] ?? 0;
                 final streak = statsSnapshot.data?['streak'] ?? 0;
@@ -91,7 +132,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header with Date Range Picker button
+                      // Header & Filter
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -100,161 +141,185 @@ class _ReportScreenState extends State<ReportScreen> {
                             style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: _selectDateRange,
-                            icon: const Icon(Icons.date_range),
-                            label: Text(
-                              _selectedDateRange == null ? 'All Time' : 'Range',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Range Stats (if selected)
-                      if (_selectedDateRange != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.3,
+                          PopupMenuButton<DateFilter>(
+                            initialValue: _selectedFilter,
+                            onSelected: (DateFilter item) {
+                              if (item == DateFilter.custom) {
+                                _pickCustomRange();
+                              } else {
+                                setState(() => _selectedFilter = item);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
                                 children: [
                                   Text(
-                                    'Selected Range',
+                                    _getFilterLabel(_selectedFilter),
                                     style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
                                       fontWeight: FontWeight.bold,
-                                      color: AppTheme.primaryColor,
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: 16),
-                                    onPressed: () => setState(
-                                      () => _selectedDateRange = null,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${_selectedDateRange!.start.day}/${_selectedDateRange!.start.month} - ${_selectedDateRange!.end.day}/${_selectedDateRange!.end.month}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _MiniStat(
-                                      label: 'Total',
-                                      value: rangeTasks.length.toString(),
-                                    ),
+                            ),
+                            itemBuilder: (BuildContext context) =>
+                                <PopupMenuEntry<DateFilter>>[
+                                  const PopupMenuItem<DateFilter>(
+                                    value: DateFilter.today,
+                                    child: Text('Today'),
                                   ),
-                                  Expanded(
-                                    child: _MiniStat(
-                                      label: 'Done',
-                                      value: rangeTasks
-                                          .where((t) => t.isCompleted)
-                                          .length
-                                          .toString(),
-                                    ),
+                                  const PopupMenuItem<DateFilter>(
+                                    value: DateFilter.thisWeek,
+                                    child: Text('This Week'),
                                   ),
-                                  Expanded(
-                                    child: _MiniStat(
-                                      label: 'Rate',
-                                      value: rangeTasks.isEmpty
-                                          ? '0%'
-                                          : '${((rangeTasks.where((t) => t.isCompleted).length / rangeTasks.length) * 100).round()}%',
-                                    ),
+                                  const PopupMenuItem<DateFilter>(
+                                    value: DateFilter.allTime,
+                                    child: Text('All Time'),
+                                  ),
+                                  const PopupMenuItem<DateFilter>(
+                                    value: DateFilter.custom,
+                                    child: Text('Custom Range...'),
                                   ),
                                 ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Summary cards
-                      Column(
-                        children: [
-                          // Focus time and streak row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  icon: Icons.timer,
-                                  iconColor: AppTheme.primaryColor,
-                                  title: 'Focus Time',
-                                  value: _formatDuration(focusSeconds),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  icon: Icons.local_fire_department,
-                                  iconColor: AppTheme.accentColor,
-                                  title: 'Day Streak',
-                                  value: '$streak days',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Tasks row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  icon: Icons.task_alt,
-                                  iconColor: AppTheme.successColor,
-                                  title: 'Completed',
-                                  value: '$completed',
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  icon: Icons.pending_actions,
-                                  iconColor: AppTheme.warningColor,
-                                  title: 'Incomplete',
-                                  value: '$incomplete',
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      // Range Display Text
+                      if (_selectedFilter == DateFilter.custom &&
+                          _customDateRange != null)
+                        Text(
+                          '${_customDateRange!.start.month}/${_customDateRange!.start.day} - ${_customDateRange!.end.month}/${_customDateRange!.end.day}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Main Stats Grid
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _StatCard(
+                            icon: Icons.timer,
+                            iconColor: AppTheme.primaryColor,
+                            title: 'Focus Time',
+                            value: _formatDuration(focusSeconds),
+                            width:
+                                (MediaQuery.of(context).size.width - 52) /
+                                2, // 2 columns
+                          ),
+                          _StatCard(
+                            icon: Icons.check_circle_outline,
+                            iconColor: AppTheme.successColor,
+                            title: 'Completion Rate',
+                            value: '$completionRate%',
+                            width: (MediaQuery.of(context).size.width - 52) / 2,
+                          ),
+                          _StatCard(
+                            icon: Icons.task_alt,
+                            iconColor: AppTheme.successColor,
+                            title: 'Completed',
+                            value: '$completedCount',
+                            width: (MediaQuery.of(context).size.width - 52) / 2,
+                          ),
+                          _StatCard(
+                            icon: Icons.pending_actions,
+                            iconColor: AppTheme.warningColor,
+                            title: 'Incomplete',
+                            value: '$incompleteCount',
+                            width: (MediaQuery.of(context).size.width - 52) / 2,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // "Day Streak" is global, maybe separate it or put it in context
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.accentColor.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: AppTheme.accentColor,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$streak Day Streak',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  'Keep the momentum going!',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
                       const SizedBox(height: 32),
 
                       // Pie chart
                       const Text(
-                        'Task Completion',
+                        'Task Distribution',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildPieChart(completed, incomplete, total),
+                      _buildPieChart(
+                        completedCount,
+                        incompleteCount,
+                        totalCount,
+                      ),
                       const SizedBox(height: 32),
 
-                      // Bar chart - Weekly tasks
+                      // Bar chart - Weekly tasks (Always show "This Week" for context, or range?)
+                      // Let's stick to "This Week" overview as it's a standard dashboard element.
                       const Text(
-                        'Weekly Overview',
+                        'Weekly Overview (Activity)',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -274,13 +339,66 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  Future<Map<String, dynamic>> _getAsyncStats(DateTimeRange range) async {
+    final focusSeconds = await database.getFocusTimeInRange(
+      range.start,
+      range.end,
+    );
+
+    // Streak is always "Current Streak", not range dependent really
+    int streak = 0;
+    final now = DateTime.now();
+    for (int i = 0; i < 365; i++) {
+      final date = now.subtract(Duration(days: i));
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final tasks = await database.getTasksInDateRange(startOfDay, endOfDay);
+      final hasCompletedTask = tasks.any((t) => t.isCompleted);
+
+      if (hasCompletedTask) {
+        streak++;
+      } else if (i > 0) {
+        break;
+      }
+    }
+
+    return {'focusSeconds': focusSeconds, 'streak': streak};
+  }
+
+  Map<int, int> _calculateWeeklyData(List<Task> allTasks) {
+    final now = DateTime.now();
+    // Start of week (Monday)
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final Map<int, int> weeklyData = {};
+
+    for (int i = 0; i < 7; i++) {
+      final date = DateTime(
+        startOfWeek.year,
+        startOfWeek.month,
+        startOfWeek.day,
+      ).add(Duration(days: i));
+
+      final dayTasks = allTasks.where((t) {
+        final taskDate = DateTime(
+          t.dueDate.year,
+          t.dueDate.month,
+          t.dueDate.day,
+        );
+        return taskDate.isAtSameMomentAs(date);
+      }).length;
+
+      weeklyData[i + 1] = dayTasks;
+    }
+    return weeklyData;
+  }
+
   Widget _buildPieChart(int completed, int incomplete, int total) {
     if (total == 0) {
       return Container(
         height: 200,
         alignment: Alignment.center,
         child: Text(
-          'No tasks yet',
+          'No tasks in this range',
           style: TextStyle(color: Colors.grey.shade500),
         ),
       );
@@ -415,29 +533,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  Future<Map<String, int>> _getAdditionalStats() async {
-    final focusSeconds = await database.getTotalFocusTimeSeconds();
-
-    // Calculate streak
-    int streak = 0;
-    final now = DateTime.now();
-    for (int i = 0; i < 365; i++) {
-      final date = now.subtract(Duration(days: i));
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
-      final tasks = await database.getTasksInDateRange(startOfDay, endOfDay);
-      final hasCompletedTask = tasks.any((t) => t.isCompleted);
-
-      if (hasCompletedTask) {
-        streak++;
-      } else if (i > 0) {
-        break;
-      }
-    }
-
-    return {'focusSeconds': focusSeconds, 'streak': streak};
-  }
-
   String _formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
@@ -453,17 +548,20 @@ class _StatCard extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String value;
+  final double? width;
 
   const _StatCard({
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.value,
+    this.width,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: width,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -523,29 +621,6 @@ class _LegendItem extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(label),
-      ],
-    );
-  }
-}
-
-class _MiniStat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MiniStat({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
       ],
     );
   }
