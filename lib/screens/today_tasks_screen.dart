@@ -22,8 +22,12 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddTaskDialog(
-        onSave: (task) async {
-          await database.insertTask(task);
+        onSave: (tasks) async {
+          await database.batch((batch) {
+            for (var task in tasks) {
+              batch.insert(database.tasks, task);
+            }
+          });
         },
       ),
     );
@@ -40,30 +44,85 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
   }
 
   Future<void> _deleteTask(Task task) async {
-    await database.deleteTask(task);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Deleted "${task.title}"'),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () async {
-              await database.insertTask(
-                TasksCompanion(
-                  title: drift.Value(task.title),
-                  description: drift.Value(task.description),
-                  color: drift.Value(task.color),
-                  priority: drift.Value(task.priority),
-                  dueDate: drift.Value(task.dueDate),
-                  isCompleted: drift.Value(task.isCompleted),
-                  timeSpentSeconds: drift.Value(task.timeSpentSeconds),
-                ),
-              );
-            },
+    bool deleteFuture = false;
+    bool confirmDelete = true;
+
+    if (task.repeatId != null) {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Repeating Task'),
+          content: const Text(
+            'This is a repeating task. Do you want to delete only this instance or this and all future instances?',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'single'),
+              child: const Text('This Only'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'future'),
+              child: const Text('This and Future'),
+            ),
+          ],
         ),
       );
+
+      if (result == 'cancel' || result == null) {
+        confirmDelete = false;
+      } else if (result == 'future') {
+        deleteFuture = true;
+      }
     }
+
+    if (confirmDelete) {
+      if (deleteFuture && task.repeatId != null) {
+        // Delete this task and all future tasks with same repeatId
+        await (database.delete(database.tasks)..where(
+              (t) =>
+                  t.repeatId.equals(task.repeatId!) &
+                  t.dueDate.isBiggerOrEqualValue(task.dueDate),
+            ))
+            .go();
+      } else {
+        await database.deleteTask(task);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${task.title}"'),
+            // Simplified Undo for now as batch undo is complex
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => _undoDelete(task),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Separate undo method for cleaner code, though batch undo is not fully implemented for loops
+  Future<void> _undoDelete(Task task) async {
+    await database.insertTask(
+      TasksCompanion(
+        title: drift.Value(task.title),
+        description: drift.Value(task.description),
+        color: drift.Value(task.color),
+        priority: drift.Value(task.priority),
+        dueDate: drift.Value(task.dueDate),
+        isCompleted: drift.Value(task.isCompleted),
+        timeSpentSeconds: drift.Value(task.timeSpentSeconds),
+        repeatId: drift.Value(task.repeatId),
+        isRepeating: drift.Value(task.isRepeating),
+        repeatEndDate: drift.Value(task.repeatEndDate),
+      ),
+    );
   }
 
   String _formatDuration(int seconds) {
@@ -263,23 +322,44 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => AddTaskDialog(
         existingTask: task,
-        onSave: (companion) async {
-          await database.updateTask(
-            task.copyWith(
-              title: companion.title.value,
-              description: drift.Value(companion.description.value),
-              color: companion.color.value,
-              priority: companion.priority.value,
-              dueDate: companion.dueDate.value,
-              isRepeating: companion.isRepeating.value,
-              repeatEndDate: companion.repeatEndDate.present
-                  ? drift.Value(companion.repeatEndDate.value)
-                  : drift.Value(task.repeatEndDate),
-              categoryId: companion.categoryId.present
-                  ? drift.Value(companion.categoryId.value)
-                  : drift.Value(task.categoryId),
-            ),
-          );
+        onSave: (companions) async {
+          // Basic handle: delete old and insert new.
+          // NOTE: This will reset task stats if we're not careful, but for MVP repeat logic rewrite it handles "Conversion"
+          // For single edit (list 1), we can try to update.
+
+          if (companions.length == 1 &&
+              companions.first.repeatId.value == null) {
+            // Single task update (or detached from repeat)
+            final companion = companions.first;
+            await database.updateTask(
+              task.copyWith(
+                title: companion.title.value,
+                description: drift.Value(companion.description.value),
+                color: companion.color.value,
+                priority: companion.priority.value,
+                dueDate: companion.dueDate.value,
+                isRepeating: companion.isRepeating.value,
+                repeatEndDate: companion.repeatEndDate.present
+                    ? drift.Value(companion.repeatEndDate.value)
+                    : drift.Value(task.repeatEndDate),
+                categoryId: companion.categoryId.present
+                    ? drift.Value(companion.categoryId.value)
+                    : drift.Value(task.categoryId),
+                repeatId: drift.Value(null), // Detach if single update
+              ),
+            );
+          } else {
+            // Multi-task insert implies rewrite/new series.
+            // Delete the OLD task (this instance).
+            await database.deleteTask(task);
+
+            // Insert all New
+            await database.batch((batch) {
+              for (var c in companions) {
+                batch.insert(database.tasks, c);
+              }
+            });
+          }
         },
       ),
     );

@@ -29,6 +29,7 @@ class Tasks extends Table {
   IntColumn get timeSpentSeconds => integer().withDefault(const Constant(0))();
   BoolColumn get isRepeating => boolean().withDefault(const Constant(false))();
   DateTimeColumn get repeatEndDate => dateTime().nullable()();
+  TextColumn get repeatId => text().nullable()();
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -61,7 +62,22 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 3) {
+          // We added the repeatId column in v3
+          await m.addColumn(tasks, tasks.repeatId);
+        }
+      },
+    );
+  }
 
   // ============ CATEGORIES ============
   Future<List<Category>> getAllCategories() => select(categories).get();

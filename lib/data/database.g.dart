@@ -490,6 +490,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _repeatIdMeta = const VerificationMeta(
+    'repeatId',
+  );
+  @override
+  late final GeneratedColumn<String> repeatId = GeneratedColumn<String>(
+    'repeat_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
@@ -539,6 +550,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     timeSpentSeconds,
     isRepeating,
     repeatEndDate,
+    repeatId,
     categoryId,
     createdAt,
     completedAt,
@@ -631,6 +643,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         ),
       );
     }
+    if (data.containsKey('repeat_id')) {
+      context.handle(
+        _repeatIdMeta,
+        repeatId.isAcceptableOrUnknown(data['repeat_id']!, _repeatIdMeta),
+      );
+    }
     if (data.containsKey('category_id')) {
       context.handle(
         _categoryIdMeta,
@@ -701,6 +719,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}repeat_end_date'],
       ),
+      repeatId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repeat_id'],
+      ),
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
@@ -733,6 +755,7 @@ class Task extends DataClass implements Insertable<Task> {
   final int timeSpentSeconds;
   final bool isRepeating;
   final DateTime? repeatEndDate;
+  final String? repeatId;
   final int? categoryId;
   final DateTime createdAt;
   final DateTime? completedAt;
@@ -747,6 +770,7 @@ class Task extends DataClass implements Insertable<Task> {
     required this.timeSpentSeconds,
     required this.isRepeating,
     this.repeatEndDate,
+    this.repeatId,
     this.categoryId,
     required this.createdAt,
     this.completedAt,
@@ -767,6 +791,9 @@ class Task extends DataClass implements Insertable<Task> {
     map['is_repeating'] = Variable<bool>(isRepeating);
     if (!nullToAbsent || repeatEndDate != null) {
       map['repeat_end_date'] = Variable<DateTime>(repeatEndDate);
+    }
+    if (!nullToAbsent || repeatId != null) {
+      map['repeat_id'] = Variable<String>(repeatId);
     }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
@@ -794,6 +821,9 @@ class Task extends DataClass implements Insertable<Task> {
       repeatEndDate: repeatEndDate == null && nullToAbsent
           ? const Value.absent()
           : Value(repeatEndDate),
+      repeatId: repeatId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repeatId),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
@@ -820,6 +850,7 @@ class Task extends DataClass implements Insertable<Task> {
       timeSpentSeconds: serializer.fromJson<int>(json['timeSpentSeconds']),
       isRepeating: serializer.fromJson<bool>(json['isRepeating']),
       repeatEndDate: serializer.fromJson<DateTime?>(json['repeatEndDate']),
+      repeatId: serializer.fromJson<String?>(json['repeatId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
@@ -839,6 +870,7 @@ class Task extends DataClass implements Insertable<Task> {
       'timeSpentSeconds': serializer.toJson<int>(timeSpentSeconds),
       'isRepeating': serializer.toJson<bool>(isRepeating),
       'repeatEndDate': serializer.toJson<DateTime?>(repeatEndDate),
+      'repeatId': serializer.toJson<String?>(repeatId),
       'categoryId': serializer.toJson<int?>(categoryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
@@ -856,6 +888,7 @@ class Task extends DataClass implements Insertable<Task> {
     int? timeSpentSeconds,
     bool? isRepeating,
     Value<DateTime?> repeatEndDate = const Value.absent(),
+    Value<String?> repeatId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> completedAt = const Value.absent(),
@@ -872,6 +905,7 @@ class Task extends DataClass implements Insertable<Task> {
     repeatEndDate: repeatEndDate.present
         ? repeatEndDate.value
         : this.repeatEndDate,
+    repeatId: repeatId.present ? repeatId.value : this.repeatId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     createdAt: createdAt ?? this.createdAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
@@ -898,6 +932,7 @@ class Task extends DataClass implements Insertable<Task> {
       repeatEndDate: data.repeatEndDate.present
           ? data.repeatEndDate.value
           : this.repeatEndDate,
+      repeatId: data.repeatId.present ? data.repeatId.value : this.repeatId,
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
@@ -921,6 +956,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('timeSpentSeconds: $timeSpentSeconds, ')
           ..write('isRepeating: $isRepeating, ')
           ..write('repeatEndDate: $repeatEndDate, ')
+          ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt')
@@ -940,6 +976,7 @@ class Task extends DataClass implements Insertable<Task> {
     timeSpentSeconds,
     isRepeating,
     repeatEndDate,
+    repeatId,
     categoryId,
     createdAt,
     completedAt,
@@ -958,6 +995,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.timeSpentSeconds == this.timeSpentSeconds &&
           other.isRepeating == this.isRepeating &&
           other.repeatEndDate == this.repeatEndDate &&
+          other.repeatId == this.repeatId &&
           other.categoryId == this.categoryId &&
           other.createdAt == this.createdAt &&
           other.completedAt == this.completedAt);
@@ -974,6 +1012,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int> timeSpentSeconds;
   final Value<bool> isRepeating;
   final Value<DateTime?> repeatEndDate;
+  final Value<String?> repeatId;
   final Value<int?> categoryId;
   final Value<DateTime> createdAt;
   final Value<DateTime?> completedAt;
@@ -988,6 +1027,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.timeSpentSeconds = const Value.absent(),
     this.isRepeating = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
+    this.repeatId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1003,6 +1043,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.timeSpentSeconds = const Value.absent(),
     this.isRepeating = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
+    this.repeatId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1019,6 +1060,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? timeSpentSeconds,
     Expression<bool>? isRepeating,
     Expression<DateTime>? repeatEndDate,
+    Expression<String>? repeatId,
     Expression<int>? categoryId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? completedAt,
@@ -1034,6 +1076,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (timeSpentSeconds != null) 'time_spent_seconds': timeSpentSeconds,
       if (isRepeating != null) 'is_repeating': isRepeating,
       if (repeatEndDate != null) 'repeat_end_date': repeatEndDate,
+      if (repeatId != null) 'repeat_id': repeatId,
       if (categoryId != null) 'category_id': categoryId,
       if (createdAt != null) 'created_at': createdAt,
       if (completedAt != null) 'completed_at': completedAt,
@@ -1051,6 +1094,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int>? timeSpentSeconds,
     Value<bool>? isRepeating,
     Value<DateTime?>? repeatEndDate,
+    Value<String?>? repeatId,
     Value<int?>? categoryId,
     Value<DateTime>? createdAt,
     Value<DateTime?>? completedAt,
@@ -1066,6 +1110,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       timeSpentSeconds: timeSpentSeconds ?? this.timeSpentSeconds,
       isRepeating: isRepeating ?? this.isRepeating,
       repeatEndDate: repeatEndDate ?? this.repeatEndDate,
+      repeatId: repeatId ?? this.repeatId,
       categoryId: categoryId ?? this.categoryId,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
@@ -1105,6 +1150,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (repeatEndDate.present) {
       map['repeat_end_date'] = Variable<DateTime>(repeatEndDate.value);
     }
+    if (repeatId.present) {
+      map['repeat_id'] = Variable<String>(repeatId.value);
+    }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
     }
@@ -1130,6 +1178,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('timeSpentSeconds: $timeSpentSeconds, ')
           ..write('isRepeating: $isRepeating, ')
           ..write('repeatEndDate: $repeatEndDate, ')
+          ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt')
@@ -2146,6 +2195,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int> timeSpentSeconds,
       Value<bool> isRepeating,
       Value<DateTime?> repeatEndDate,
+      Value<String?> repeatId,
       Value<int?> categoryId,
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
@@ -2162,6 +2212,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int> timeSpentSeconds,
       Value<bool> isRepeating,
       Value<DateTime?> repeatEndDate,
+      Value<String?> repeatId,
       Value<int?> categoryId,
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
@@ -2264,6 +2315,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get repeatEndDate => $composableBuilder(
     column: $table.repeatEndDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repeatId => $composableBuilder(
+    column: $table.repeatId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2385,6 +2441,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get repeatId => $composableBuilder(
+    column: $table.repeatId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2467,6 +2528,9 @@ class $$TasksTableAnnotationComposer
     column: $table.repeatEndDate,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get repeatId =>
+      $composableBuilder(column: $table.repeatId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2563,6 +2627,7 @@ class $$TasksTableTableManager
                 Value<int> timeSpentSeconds = const Value.absent(),
                 Value<bool> isRepeating = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
+                Value<String?> repeatId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
@@ -2577,6 +2642,7 @@ class $$TasksTableTableManager
                 timeSpentSeconds: timeSpentSeconds,
                 isRepeating: isRepeating,
                 repeatEndDate: repeatEndDate,
+                repeatId: repeatId,
                 categoryId: categoryId,
                 createdAt: createdAt,
                 completedAt: completedAt,
@@ -2593,6 +2659,7 @@ class $$TasksTableTableManager
                 Value<int> timeSpentSeconds = const Value.absent(),
                 Value<bool> isRepeating = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
+                Value<String?> repeatId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
@@ -2607,6 +2674,7 @@ class $$TasksTableTableManager
                 timeSpentSeconds: timeSpentSeconds,
                 isRepeating: isRepeating,
                 repeatEndDate: repeatEndDate,
+                repeatId: repeatId,
                 categoryId: categoryId,
                 createdAt: createdAt,
                 completedAt: completedAt,

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 import '../models/priority.dart';
 
+enum RepeatType { daily, weekly, monthly }
+
 /// Dialog for adding or editing tasks
 class AddTaskDialog extends StatefulWidget {
-  final Function(TasksCompanion) onSave;
+  final Function(List<TasksCompanion>) onSave;
   final Task? existingTask;
   final DateTime? initialDate;
 
@@ -30,6 +33,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   late DateTime _dueDate;
   bool _isRepeating = false;
   DateTime? _repeatEndDate;
+
+  // New Repetition State
+  RepeatType _repeatType = RepeatType.daily;
+  final Set<int> _selectedWeekDays = {}; // 1 (Mon) - 7 (Sun)
+  final Set<int> _selectedMonthDays = {}; // 1 - 31
 
   final List<Color> _colorOptions = [
     const Color(0xFF2196F3), // Blue
@@ -57,6 +65,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     _dueDate = task?.dueDate ?? widget.initialDate ?? DateTime.now();
     _isRepeating = task?.isRepeating ?? false;
     _repeatEndDate = task?.repeatEndDate;
+    // Default repetition values
+    if (_dueDate.weekday != 0) _selectedWeekDays.add(_dueDate.weekday);
+    if (_dueDate.day != 0) _selectedMonthDays.add(_dueDate.day);
   }
 
   @override
@@ -74,7 +85,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
     if (picked != null) {
-      setState(() => _dueDate = picked);
+      setState(() {
+        _dueDate = picked;
+        // Update defaults if empty
+        if (_selectedWeekDays.isEmpty) _selectedWeekDays.add(_dueDate.weekday);
+        if (_selectedMonthDays.isEmpty) _selectedMonthDays.add(_dueDate.day);
+      });
     }
   }
 
@@ -92,25 +108,112 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      final companion = TasksCompanion(
-        title: drift.Value(_titleController.text.trim()),
-        description: drift.Value(
-          _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-        ),
-        color: drift.Value(_selectedColor.toARGB32()),
-        priority: drift.Value(_priority.label),
-        dueDate: drift.Value(_dueDate),
-        isRepeating: drift.Value(_isRepeating),
-        repeatEndDate: _isRepeating && _repeatEndDate != null
-            ? drift.Value(_repeatEndDate)
-            : const drift.Value(null),
-      );
+      if (_isRepeating && _repeatEndDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a repeat until date')),
+        );
+        return;
+      }
 
-      widget.onSave(companion);
+      if (_isRepeating &&
+          _repeatType == RepeatType.weekly &&
+          _selectedWeekDays.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one day of the week'),
+          ),
+        );
+        return;
+      }
+
+      if (_isRepeating &&
+          _repeatType == RepeatType.monthly &&
+          _selectedMonthDays.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one day of the month'),
+          ),
+        );
+        return;
+      }
+
+      final List<TasksCompanion> tasksToSave = [];
+      final String? repeatId = _isRepeating ? const Uuid().v4() : null;
+
+      if (!_isRepeating) {
+        tasksToSave.add(_createTaskCompanion(_dueDate, repeatId));
+      } else {
+        // Generate instances
+        DateTime currentDate = DateTime(
+          _dueDate.year,
+          _dueDate.month,
+          _dueDate.day,
+        );
+        final end = DateTime(
+          _repeatEndDate!.year,
+          _repeatEndDate!.month,
+          _repeatEndDate!.day,
+        );
+
+        // Safety cap (e.g. 365 days) to preventing infinite loops or massive creates
+        int count = 0;
+        const int maxLimit = 365 * 2; // 2 years max
+
+        while (currentDate.isBefore(end.add(const Duration(days: 1))) &&
+            count < maxLimit) {
+          bool shouldAdd = false;
+
+          if (_repeatType == RepeatType.daily) {
+            shouldAdd = true;
+          } else if (_repeatType == RepeatType.weekly) {
+            if (_selectedWeekDays.contains(currentDate.weekday)) {
+              shouldAdd = true;
+            }
+          } else if (_repeatType == RepeatType.monthly) {
+            if (_selectedMonthDays.contains(currentDate.day)) {
+              shouldAdd = true;
+            }
+          }
+
+          if (shouldAdd) {
+            // Adjust time to match _dueDate time
+            final taskDate = DateTime(
+              currentDate.year,
+              currentDate.month,
+              currentDate.day,
+              _dueDate.hour,
+              _dueDate.minute,
+            );
+            tasksToSave.add(_createTaskCompanion(taskDate, repeatId));
+          }
+
+          currentDate = currentDate.add(const Duration(days: 1));
+          count++;
+        }
+      }
+
+      widget.onSave(tasksToSave);
       Navigator.pop(context);
     }
+  }
+
+  TasksCompanion _createTaskCompanion(DateTime date, String? repeatId) {
+    return TasksCompanion(
+      title: drift.Value(_titleController.text.trim()),
+      description: drift.Value(
+        _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+      ),
+      color: drift.Value(_selectedColor.toARGB32()),
+      priority: drift.Value(_priority.label),
+      dueDate: drift.Value(date),
+      isRepeating: drift.Value(_isRepeating),
+      repeatEndDate: _isRepeating && _repeatEndDate != null
+          ? drift.Value(_repeatEndDate)
+          : const drift.Value(null),
+      repeatId: drift.Value(repeatId),
+    );
   }
 
   @override
@@ -255,8 +358,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               ),
               const SizedBox(height: 24),
 
-              const SizedBox(height: 24),
-
               // Due Date
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -283,6 +384,131 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               ),
 
               if (_isRepeating) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Frequency',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<RepeatType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: RepeatType.daily,
+                      label: Text('Daily'),
+                    ),
+                    ButtonSegment(
+                      value: RepeatType.weekly,
+                      label: Text('Weekly'),
+                    ),
+                    ButtonSegment(
+                      value: RepeatType.monthly,
+                      label: Text('Monthly'),
+                    ),
+                  ],
+                  selected: {_repeatType},
+                  onSelectionChanged: (Set<RepeatType> newSelection) {
+                    setState(() {
+                      _repeatType = newSelection.first;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                if (_repeatType == RepeatType.weekly) ...[
+                  const Text(
+                    'Repeat on',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: List.generate(7, (index) {
+                      final dayIndex = index + 1; // 1 = Mon, 7 = Sun
+                      final dayName = [
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                        'Sun',
+                      ][index];
+                      final isSelected = _selectedWeekDays.contains(dayIndex);
+                      return FilterChip(
+                        label: Text(dayName),
+                        selected: isSelected,
+                        onSelected: (bool selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedWeekDays.add(dayIndex);
+                            } else {
+                              _selectedWeekDays.remove(dayIndex);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                if (_repeatType == RepeatType.monthly) ...[
+                  const Text(
+                    'Repeat on day(s)',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 200, // Limit height for Month grid
+                    child: GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 7,
+                            childAspectRatio: 1,
+                            crossAxisSpacing: 4,
+                            mainAxisSpacing: 4,
+                          ),
+                      itemCount: 31,
+                      itemBuilder: (context, index) {
+                        final dayNum = index + 1;
+                        final isSelected = _selectedMonthDays.contains(dayNum);
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedMonthDays.remove(dayNum);
+                              } else {
+                                _selectedMonthDays.add(dayNum);
+                              }
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.transparent,
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$dayNum',
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : null,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.event_repeat),
@@ -290,8 +516,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   subtitle: Text(
                     _repeatEndDate != null
                         ? '${_repeatEndDate!.day}/${_repeatEndDate!.month}/${_repeatEndDate!.year}'
-                        : 'Not set',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                        : 'Select End Date',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: _repeatEndDate == null ? Colors.red : null,
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _selectRepeatEndDate,

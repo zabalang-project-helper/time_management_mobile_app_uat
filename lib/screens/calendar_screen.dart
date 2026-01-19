@@ -21,6 +21,63 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
+  Future<void> _deleteTask(Task task) async {
+    bool deleteFuture = false;
+    bool confirmDelete = true;
+
+    if (task.repeatId != null) {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Repeating Task'),
+          content: const Text(
+            'This is a repeating task. Do you want to delete only this instance or this and all future instances?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'single'),
+              child: const Text('This Only'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'future'),
+              child: const Text('This and Future'),
+            ),
+          ],
+        ),
+      );
+
+      if (result == 'cancel' || result == null) {
+        confirmDelete = false;
+      } else if (result == 'future') {
+        deleteFuture = true;
+      }
+    }
+
+    if (confirmDelete) {
+      if (deleteFuture && task.repeatId != null) {
+        // Delete this task and all future tasks with same repeatId
+        await (database.delete(database.tasks)..where(
+              (t) =>
+                  t.repeatId.equals(task.repeatId!) &
+                  t.dueDate.isBiggerOrEqualValue(task.dueDate),
+            ))
+            .go();
+      } else {
+        await database.deleteTask(task);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Deleted "${task.title}"')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,9 +253,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             await database.markTaskComplete(task);
                           }
                         },
-                        onDelete: () async {
-                          await database.deleteTask(task);
-                        },
+                        onDelete: () => _deleteTask(task),
                       );
                     },
                   );
@@ -216,8 +271,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             backgroundColor: Colors.transparent,
             builder: (context) => AddTaskDialog(
               initialDate: _selectedDay,
-              onSave: (task) async {
-                await database.insertTask(task);
+              onSave: (tasks) async {
+                await database.batch((batch) {
+                  for (var task in tasks) {
+                    batch.insert(database.tasks, task);
+                  }
+                });
               },
             ),
           );
