@@ -154,17 +154,19 @@ class _IntroScreenState extends State<IntroScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.check_circle_outline,
-                            size: 60,
-                            color: AppTheme.primaryColor,
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 40),
 
                         // App name
                         const Text(
-                          'Task Scheduler',
+                          'TimeOptimize',
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
