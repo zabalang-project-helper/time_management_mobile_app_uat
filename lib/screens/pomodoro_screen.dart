@@ -14,7 +14,7 @@ class PomodoroScreen extends StatefulWidget {
 }
 
 class _PomodoroScreenState extends State<PomodoroScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Timer settings
   int _pomodoroMinutes = 25;
   int _shortBreakMinutes = 5;
@@ -35,9 +35,24 @@ class _PomodoroScreenState extends State<PomodoroScreen>
 
   int _sessionTimeSpent = 0;
 
+  final Map<_TimerMode, int> _remainingSeconds = {
+  _TimerMode.focus: 25 * 60,
+  _TimerMode.shortBreak: 5 * 60,
+  _TimerMode.longBreak: 15 * 60,
+};
+
+final Map<_TimerMode, DateTime?> _endTimes = {
+  _TimerMode.focus: null,
+  _TimerMode.shortBreak: null,
+  _TimerMode.longBreak: null,
+};
+
+_TimerMode? _runningMode;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSettings();
   }
 
@@ -47,29 +62,52 @@ class _PomodoroScreenState extends State<PomodoroScreen>
       _pomodoroMinutes = settings.pomodoroMinutes;
       _shortBreakMinutes = settings.shortBreakMinutes;
       _longBreakMinutes = settings.longBreakMinutes;
-      _currentSeconds = _pomodoroMinutes * 60;
+      
+      _remainingSeconds[_TimerMode.focus] = _pomodoroMinutes * 60;
+      _remainingSeconds[_TimerMode.shortBreak] = _shortBreakMinutes * 60;
+      _remainingSeconds[_TimerMode.longBreak] = _longBreakMinutes * 60;
+
+      _currentSeconds = _remainingSeconds[_timerMode]!;
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
 
   void _startTimer() {
+    if (_runningMode != null && _runningMode != _timerMode) {
+      _endTimes[_runningMode!] = null; // clear old mode
+      _timer?.cancel();
+    }
+
+    _runningMode = _timerMode;
     _isRunning = true;
+    _endTimes[_timerMode] = DateTime.now().add(Duration(seconds: _remainingSeconds[_timerMode]!));
+   
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_currentSeconds > 0) {
+      final endTime = _endTimes[_timerMode];
+      if (endTime == null) return;
+
+      final remaining = (endTime.difference(DateTime.now()).inMilliseconds / 1000).ceil();
+
+      if (remaining > 0) {
         setState(() {
-          _currentSeconds--;
+          _remainingSeconds[_timerMode] = remaining;
+          _currentSeconds = remaining;
+
           if (_timerMode == _TimerMode.focus) {
             _sessionTimeSpent++;
           }
         });
       } else {
         _timer?.cancel();
+        _remainingSeconds[_timerMode] = 0;
+        _currentSeconds = 0;
         _onTimerComplete();
       }
     });
@@ -78,13 +116,17 @@ class _PomodoroScreenState extends State<PomodoroScreen>
 
   void _pauseTimer() {
     _timer?.cancel();
+    _endTimes[_timerMode] = null;
+    _runningMode = null;
     setState(() => _isRunning = false);
   }
 
   void _resetTimer() {
     _timer?.cancel();
+    _endTimes[_timerMode] = null;
     setState(() {
       _isRunning = false;
+      _remainingSeconds[_timerMode] = _getModeDuration() * 60;
       _currentSeconds = _getModeDuration() * 60;
     });
   }
@@ -108,7 +150,7 @@ class _PomodoroScreenState extends State<PomodoroScreen>
       // Assuming user might add 'assets/sounds/ding.mp3', otherwise this might fail silently or log error.
       // For now, let's try to play a reliable source or catch error.
       // We will assume the user has configured assets in pubspec.yaml as requested.
-      await _audioPlayer.play(AssetSource('sounds/ding.mp3'));
+      await _audioPlayer.play(AssetSource('sounds/alarms_rings.mp3'));
     } catch (e) {
       debugPrint('Error playing sound: $e');
     }
@@ -147,11 +189,12 @@ class _PomodoroScreenState extends State<PomodoroScreen>
   }
 
   void _switchMode(_TimerMode mode) {
-    _timer?.cancel();
     setState(() {
       _timerMode = mode;
-      _isRunning = false;
-      _currentSeconds = _getModeDuration() * 60;
+      _currentSeconds = _remainingSeconds[mode]!;
+
+      // Update play/pause button state correctly
+      _isRunning = (_runningMode == mode);
     });
   }
 
@@ -232,6 +275,30 @@ class _PomodoroScreenState extends State<PomodoroScreen>
           SnackBar(content: Text('"${task.title}" marked as complete!')),
         );
         setState(() => _selectedTaskId = null);
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isRunning) return;
+
+    final endTime = _endTimes[_timerMode];
+    if (endTime == null) return;
+
+    if (state == AppLifecycleState.resumed) {
+      final remaining = (endTime.difference(DateTime.now()).inMilliseconds / 1000).ceil();
+      
+      if (remaining <= 0) {
+        _timer?.cancel();
+        _remainingSeconds[_timerMode] = 0;
+        _currentSeconds = 0;
+        _onTimerComplete();
+      } else {
+        setState(() {
+          _remainingSeconds[_timerMode] = remaining;
+          _currentSeconds = remaining;
+        });
       }
     }
   }
