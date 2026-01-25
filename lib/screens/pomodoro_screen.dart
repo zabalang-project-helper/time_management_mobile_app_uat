@@ -363,8 +363,9 @@ _TimerMode? _runningMode;
             ),
             const SizedBox(height: 40),
 
-            // Timer display
-            Expanded(
+            // Timer display (fixed size, never squashes)
+            SizedBox(
+              height: 320, // 👈 lock height
               child: Center(
                 child: Stack(
                   alignment: Alignment.center,
