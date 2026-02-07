@@ -44,15 +44,13 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _iconCodePointMeta = const VerificationMeta(
-    'iconCodePoint',
-  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
-  late final GeneratedColumn<int> iconCodePoint = GeneratedColumn<int>(
-    'icon_code_point',
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -68,13 +66,7 @@ class $CategoriesTable extends Categories
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    color,
-    iconCodePoint,
-    createdAt,
-  ];
+  List<GeneratedColumn> get $columns => [id, name, color, note, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -106,13 +98,10 @@ class $CategoriesTable extends Categories
     } else if (isInserting) {
       context.missing(_colorMeta);
     }
-    if (data.containsKey('icon_code_point')) {
+    if (data.containsKey('note')) {
       context.handle(
-        _iconCodePointMeta,
-        iconCodePoint.isAcceptableOrUnknown(
-          data['icon_code_point']!,
-          _iconCodePointMeta,
-        ),
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -142,9 +131,9 @@ class $CategoriesTable extends Categories
         DriftSqlType.int,
         data['${effectivePrefix}color'],
       )!,
-      iconCodePoint: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}icon_code_point'],
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
       ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -163,13 +152,13 @@ class Category extends DataClass implements Insertable<Category> {
   final int id;
   final String name;
   final int color;
-  final int? iconCodePoint;
+  final String? note;
   final DateTime createdAt;
   const Category({
     required this.id,
     required this.name,
     required this.color,
-    this.iconCodePoint,
+    this.note,
     required this.createdAt,
   });
   @override
@@ -178,8 +167,8 @@ class Category extends DataClass implements Insertable<Category> {
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['color'] = Variable<int>(color);
-    if (!nullToAbsent || iconCodePoint != null) {
-      map['icon_code_point'] = Variable<int>(iconCodePoint);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -190,9 +179,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: Value(id),
       name: Value(name),
       color: Value(color),
-      iconCodePoint: iconCodePoint == null && nullToAbsent
-          ? const Value.absent()
-          : Value(iconCodePoint),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
     );
   }
@@ -206,7 +193,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       color: serializer.fromJson<int>(json['color']),
-      iconCodePoint: serializer.fromJson<int?>(json['iconCodePoint']),
+      note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -217,7 +204,7 @@ class Category extends DataClass implements Insertable<Category> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<int>(color),
-      'iconCodePoint': serializer.toJson<int?>(iconCodePoint),
+      'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -226,15 +213,13 @@ class Category extends DataClass implements Insertable<Category> {
     int? id,
     String? name,
     int? color,
-    Value<int?> iconCodePoint = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     DateTime? createdAt,
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
     color: color ?? this.color,
-    iconCodePoint: iconCodePoint.present
-        ? iconCodePoint.value
-        : this.iconCodePoint,
+    note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
@@ -242,9 +227,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
-      iconCodePoint: data.iconCodePoint.present
-          ? data.iconCodePoint.value
-          : this.iconCodePoint,
+      note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -255,14 +238,14 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('iconCodePoint: $iconCodePoint, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, color, iconCodePoint, createdAt);
+  int get hashCode => Object.hash(id, name, color, note, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -270,7 +253,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.id == this.id &&
           other.name == this.name &&
           other.color == this.color &&
-          other.iconCodePoint == this.iconCodePoint &&
+          other.note == this.note &&
           other.createdAt == this.createdAt);
 }
 
@@ -278,20 +261,20 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<int> id;
   final Value<String> name;
   final Value<int> color;
-  final Value<int?> iconCodePoint;
+  final Value<String?> note;
   final Value<DateTime> createdAt;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.color = const Value.absent(),
-    this.iconCodePoint = const Value.absent(),
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required int color,
-    this.iconCodePoint = const Value.absent(),
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        color = Value(color);
@@ -299,14 +282,14 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<int>? color,
-    Expression<int>? iconCodePoint,
+    Expression<String>? note,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (color != null) 'color': color,
-      if (iconCodePoint != null) 'icon_code_point': iconCodePoint,
+      if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -315,14 +298,14 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<int>? id,
     Value<String>? name,
     Value<int>? color,
-    Value<int?>? iconCodePoint,
+    Value<String?>? note,
     Value<DateTime>? createdAt,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
-      iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -339,8 +322,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (color.present) {
       map['color'] = Variable<int>(color.value);
     }
-    if (iconCodePoint.present) {
-      map['icon_code_point'] = Variable<int>(iconCodePoint.value);
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -354,7 +337,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('iconCodePoint: $iconCodePoint, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -538,6 +521,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isRemindingMeta = const VerificationMeta(
+    'isReminding',
+  );
+  @override
+  late final GeneratedColumn<bool> isReminding = GeneratedColumn<bool>(
+    'is_reminding',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_reminding" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -554,6 +552,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     categoryId,
     createdAt,
     completedAt,
+    isReminding,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -670,6 +669,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         ),
       );
     }
+    if (data.containsKey('is_reminding')) {
+      context.handle(
+        _isRemindingMeta,
+        isReminding.isAcceptableOrUnknown(
+          data['is_reminding']!,
+          _isRemindingMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -735,6 +743,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
       ),
+      isReminding: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_reminding'],
+      )!,
     );
   }
 
@@ -759,6 +771,7 @@ class Task extends DataClass implements Insertable<Task> {
   final int? categoryId;
   final DateTime createdAt;
   final DateTime? completedAt;
+  final bool isReminding;
   const Task({
     required this.id,
     required this.title,
@@ -774,6 +787,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.categoryId,
     required this.createdAt,
     this.completedAt,
+    required this.isReminding,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -802,6 +816,7 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
+    map['is_reminding'] = Variable<bool>(isReminding);
     return map;
   }
 
@@ -831,6 +846,7 @@ class Task extends DataClass implements Insertable<Task> {
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
+      isReminding: Value(isReminding),
     );
   }
 
@@ -854,6 +870,7 @@ class Task extends DataClass implements Insertable<Task> {
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      isReminding: serializer.fromJson<bool>(json['isReminding']),
     );
   }
   @override
@@ -874,6 +891,7 @@ class Task extends DataClass implements Insertable<Task> {
       'categoryId': serializer.toJson<int?>(categoryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'isReminding': serializer.toJson<bool>(isReminding),
     };
   }
 
@@ -892,6 +910,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<int?> categoryId = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> completedAt = const Value.absent(),
+    bool? isReminding,
   }) => Task(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -909,6 +928,7 @@ class Task extends DataClass implements Insertable<Task> {
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     createdAt: createdAt ?? this.createdAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    isReminding: isReminding ?? this.isReminding,
   );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
@@ -940,6 +960,9 @@ class Task extends DataClass implements Insertable<Task> {
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
+      isReminding: data.isReminding.present
+          ? data.isReminding.value
+          : this.isReminding,
     );
   }
 
@@ -959,7 +982,8 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('completedAt: $completedAt')
+          ..write('completedAt: $completedAt, ')
+          ..write('isReminding: $isReminding')
           ..write(')'))
         .toString();
   }
@@ -980,6 +1004,7 @@ class Task extends DataClass implements Insertable<Task> {
     categoryId,
     createdAt,
     completedAt,
+    isReminding,
   );
   @override
   bool operator ==(Object other) =>
@@ -998,7 +1023,8 @@ class Task extends DataClass implements Insertable<Task> {
           other.repeatId == this.repeatId &&
           other.categoryId == this.categoryId &&
           other.createdAt == this.createdAt &&
-          other.completedAt == this.completedAt);
+          other.completedAt == this.completedAt &&
+          other.isReminding == this.isReminding);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
@@ -1016,6 +1042,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int?> categoryId;
   final Value<DateTime> createdAt;
   final Value<DateTime?> completedAt;
+  final Value<bool> isReminding;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -1031,6 +1058,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.isReminding = const Value.absent(),
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
@@ -1047,6 +1075,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.isReminding = const Value.absent(),
   }) : title = Value(title),
        dueDate = Value(dueDate);
   static Insertable<Task> custom({
@@ -1064,6 +1093,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? categoryId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? completedAt,
+    Expression<bool>? isReminding,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1080,6 +1110,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (categoryId != null) 'category_id': categoryId,
       if (createdAt != null) 'created_at': createdAt,
       if (completedAt != null) 'completed_at': completedAt,
+      if (isReminding != null) 'is_reminding': isReminding,
     });
   }
 
@@ -1098,6 +1129,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int?>? categoryId,
     Value<DateTime>? createdAt,
     Value<DateTime?>? completedAt,
+    Value<bool>? isReminding,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
@@ -1114,6 +1146,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       categoryId: categoryId ?? this.categoryId,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
+      isReminding: isReminding ?? this.isReminding,
     );
   }
 
@@ -1162,6 +1195,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
+    if (isReminding.present) {
+      map['is_reminding'] = Variable<bool>(isReminding.value);
+    }
     return map;
   }
 
@@ -1181,7 +1217,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('completedAt: $completedAt')
+          ..write('completedAt: $completedAt, ')
+          ..write('isReminding: $isReminding')
           ..write(')'))
         .toString();
   }
@@ -1496,6 +1533,784 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
           ..write('taskId: $taskId, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFF2196F3),
+  );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+    'due_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startTimeMeta = const VerificationMeta(
+    'startTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startTime = GeneratedColumn<DateTime>(
+    'start_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endTimeMeta = const VerificationMeta(
+    'endTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endTime = GeneratedColumn<DateTime>(
+    'end_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMinutesMeta = const VerificationMeta(
+    'durationMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> durationMinutes = GeneratedColumn<int>(
+    'duration_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isRepeatingMeta = const VerificationMeta(
+    'isRepeating',
+  );
+  @override
+  late final GeneratedColumn<bool> isRepeating = GeneratedColumn<bool>(
+    'is_repeating',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_repeating" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _repeatEndDateMeta = const VerificationMeta(
+    'repeatEndDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> repeatEndDate =
+      GeneratedColumn<DateTime>(
+        'repeat_end_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _repeatIdMeta = const VerificationMeta(
+    'repeatId',
+  );
+  @override
+  late final GeneratedColumn<String> repeatId = GeneratedColumn<String>(
+    'repeat_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _isRemindingMeta = const VerificationMeta(
+    'isReminding',
+  );
+  @override
+  late final GeneratedColumn<bool> isReminding = GeneratedColumn<bool>(
+    'is_reminding',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_reminding" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    description,
+    color,
+    dueDate,
+    startTime,
+    endTime,
+    durationMinutes,
+    isRepeating,
+    repeatEndDate,
+    repeatId,
+    categoryId,
+    isReminding,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Event> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueDateMeta);
+    }
+    if (data.containsKey('start_time')) {
+      context.handle(
+        _startTimeMeta,
+        startTime.isAcceptableOrUnknown(data['start_time']!, _startTimeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startTimeMeta);
+    }
+    if (data.containsKey('end_time')) {
+      context.handle(
+        _endTimeMeta,
+        endTime.isAcceptableOrUnknown(data['end_time']!, _endTimeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endTimeMeta);
+    }
+    if (data.containsKey('duration_minutes')) {
+      context.handle(
+        _durationMinutesMeta,
+        durationMinutes.isAcceptableOrUnknown(
+          data['duration_minutes']!,
+          _durationMinutesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMinutesMeta);
+    }
+    if (data.containsKey('is_repeating')) {
+      context.handle(
+        _isRepeatingMeta,
+        isRepeating.isAcceptableOrUnknown(
+          data['is_repeating']!,
+          _isRepeatingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repeat_end_date')) {
+      context.handle(
+        _repeatEndDateMeta,
+        repeatEndDate.isAcceptableOrUnknown(
+          data['repeat_end_date']!,
+          _repeatEndDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repeat_id')) {
+      context.handle(
+        _repeatIdMeta,
+        repeatId.isAcceptableOrUnknown(data['repeat_id']!, _repeatIdMeta),
+      );
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('is_reminding')) {
+      context.handle(
+        _isRemindingMeta,
+        isReminding.isAcceptableOrUnknown(
+          data['is_reminding']!,
+          _isRemindingMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Event map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Event(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color'],
+      )!,
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_date'],
+      )!,
+      startTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_time'],
+      )!,
+      endTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_time'],
+      )!,
+      durationMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_minutes'],
+      )!,
+      isRepeating: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_repeating'],
+      )!,
+      repeatEndDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}repeat_end_date'],
+      ),
+      repeatId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repeat_id'],
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      ),
+      isReminding: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_reminding'],
+      )!,
+    );
+  }
+
+  @override
+  $EventsTable createAlias(String alias) {
+    return $EventsTable(attachedDatabase, alias);
+  }
+}
+
+class Event extends DataClass implements Insertable<Event> {
+  final int id;
+  final String title;
+  final String? description;
+  final int color;
+  final DateTime dueDate;
+  final DateTime startTime;
+  final DateTime endTime;
+  final int durationMinutes;
+  final bool isRepeating;
+  final DateTime? repeatEndDate;
+  final String? repeatId;
+  final int? categoryId;
+  final bool isReminding;
+  const Event({
+    required this.id,
+    required this.title,
+    this.description,
+    required this.color,
+    required this.dueDate,
+    required this.startTime,
+    required this.endTime,
+    required this.durationMinutes,
+    required this.isRepeating,
+    this.repeatEndDate,
+    this.repeatId,
+    this.categoryId,
+    required this.isReminding,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['color'] = Variable<int>(color);
+    map['due_date'] = Variable<DateTime>(dueDate);
+    map['start_time'] = Variable<DateTime>(startTime);
+    map['end_time'] = Variable<DateTime>(endTime);
+    map['duration_minutes'] = Variable<int>(durationMinutes);
+    map['is_repeating'] = Variable<bool>(isRepeating);
+    if (!nullToAbsent || repeatEndDate != null) {
+      map['repeat_end_date'] = Variable<DateTime>(repeatEndDate);
+    }
+    if (!nullToAbsent || repeatId != null) {
+      map['repeat_id'] = Variable<String>(repeatId);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    map['is_reminding'] = Variable<bool>(isReminding);
+    return map;
+  }
+
+  EventsCompanion toCompanion(bool nullToAbsent) {
+    return EventsCompanion(
+      id: Value(id),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      color: Value(color),
+      dueDate: Value(dueDate),
+      startTime: Value(startTime),
+      endTime: Value(endTime),
+      durationMinutes: Value(durationMinutes),
+      isRepeating: Value(isRepeating),
+      repeatEndDate: repeatEndDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repeatEndDate),
+      repeatId: repeatId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repeatId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      isReminding: Value(isReminding),
+    );
+  }
+
+  factory Event.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Event(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      color: serializer.fromJson<int>(json['color']),
+      dueDate: serializer.fromJson<DateTime>(json['dueDate']),
+      startTime: serializer.fromJson<DateTime>(json['startTime']),
+      endTime: serializer.fromJson<DateTime>(json['endTime']),
+      durationMinutes: serializer.fromJson<int>(json['durationMinutes']),
+      isRepeating: serializer.fromJson<bool>(json['isRepeating']),
+      repeatEndDate: serializer.fromJson<DateTime?>(json['repeatEndDate']),
+      repeatId: serializer.fromJson<String?>(json['repeatId']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      isReminding: serializer.fromJson<bool>(json['isReminding']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'color': serializer.toJson<int>(color),
+      'dueDate': serializer.toJson<DateTime>(dueDate),
+      'startTime': serializer.toJson<DateTime>(startTime),
+      'endTime': serializer.toJson<DateTime>(endTime),
+      'durationMinutes': serializer.toJson<int>(durationMinutes),
+      'isRepeating': serializer.toJson<bool>(isRepeating),
+      'repeatEndDate': serializer.toJson<DateTime?>(repeatEndDate),
+      'repeatId': serializer.toJson<String?>(repeatId),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'isReminding': serializer.toJson<bool>(isReminding),
+    };
+  }
+
+  Event copyWith({
+    int? id,
+    String? title,
+    Value<String?> description = const Value.absent(),
+    int? color,
+    DateTime? dueDate,
+    DateTime? startTime,
+    DateTime? endTime,
+    int? durationMinutes,
+    bool? isRepeating,
+    Value<DateTime?> repeatEndDate = const Value.absent(),
+    Value<String?> repeatId = const Value.absent(),
+    Value<int?> categoryId = const Value.absent(),
+    bool? isReminding,
+  }) => Event(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    color: color ?? this.color,
+    dueDate: dueDate ?? this.dueDate,
+    startTime: startTime ?? this.startTime,
+    endTime: endTime ?? this.endTime,
+    durationMinutes: durationMinutes ?? this.durationMinutes,
+    isRepeating: isRepeating ?? this.isRepeating,
+    repeatEndDate: repeatEndDate.present
+        ? repeatEndDate.value
+        : this.repeatEndDate,
+    repeatId: repeatId.present ? repeatId.value : this.repeatId,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    isReminding: isReminding ?? this.isReminding,
+  );
+  Event copyWithCompanion(EventsCompanion data) {
+    return Event(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      color: data.color.present ? data.color.value : this.color,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      startTime: data.startTime.present ? data.startTime.value : this.startTime,
+      endTime: data.endTime.present ? data.endTime.value : this.endTime,
+      durationMinutes: data.durationMinutes.present
+          ? data.durationMinutes.value
+          : this.durationMinutes,
+      isRepeating: data.isRepeating.present
+          ? data.isRepeating.value
+          : this.isRepeating,
+      repeatEndDate: data.repeatEndDate.present
+          ? data.repeatEndDate.value
+          : this.repeatEndDate,
+      repeatId: data.repeatId.present ? data.repeatId.value : this.repeatId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      isReminding: data.isReminding.present
+          ? data.isReminding.value
+          : this.isReminding,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Event(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('color: $color, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('durationMinutes: $durationMinutes, ')
+          ..write('isRepeating: $isRepeating, ')
+          ..write('repeatEndDate: $repeatEndDate, ')
+          ..write('repeatId: $repeatId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isReminding: $isReminding')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    description,
+    color,
+    dueDate,
+    startTime,
+    endTime,
+    durationMinutes,
+    isRepeating,
+    repeatEndDate,
+    repeatId,
+    categoryId,
+    isReminding,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Event &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.color == this.color &&
+          other.dueDate == this.dueDate &&
+          other.startTime == this.startTime &&
+          other.endTime == this.endTime &&
+          other.durationMinutes == this.durationMinutes &&
+          other.isRepeating == this.isRepeating &&
+          other.repeatEndDate == this.repeatEndDate &&
+          other.repeatId == this.repeatId &&
+          other.categoryId == this.categoryId &&
+          other.isReminding == this.isReminding);
+}
+
+class EventsCompanion extends UpdateCompanion<Event> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<int> color;
+  final Value<DateTime> dueDate;
+  final Value<DateTime> startTime;
+  final Value<DateTime> endTime;
+  final Value<int> durationMinutes;
+  final Value<bool> isRepeating;
+  final Value<DateTime?> repeatEndDate;
+  final Value<String?> repeatId;
+  final Value<int?> categoryId;
+  final Value<bool> isReminding;
+  const EventsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.color = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.startTime = const Value.absent(),
+    this.endTime = const Value.absent(),
+    this.durationMinutes = const Value.absent(),
+    this.isRepeating = const Value.absent(),
+    this.repeatEndDate = const Value.absent(),
+    this.repeatId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isReminding = const Value.absent(),
+  });
+  EventsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    this.description = const Value.absent(),
+    this.color = const Value.absent(),
+    required DateTime dueDate,
+    required DateTime startTime,
+    required DateTime endTime,
+    required int durationMinutes,
+    this.isRepeating = const Value.absent(),
+    this.repeatEndDate = const Value.absent(),
+    this.repeatId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isReminding = const Value.absent(),
+  }) : title = Value(title),
+       dueDate = Value(dueDate),
+       startTime = Value(startTime),
+       endTime = Value(endTime),
+       durationMinutes = Value(durationMinutes);
+  static Insertable<Event> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<int>? color,
+    Expression<DateTime>? dueDate,
+    Expression<DateTime>? startTime,
+    Expression<DateTime>? endTime,
+    Expression<int>? durationMinutes,
+    Expression<bool>? isRepeating,
+    Expression<DateTime>? repeatEndDate,
+    Expression<String>? repeatId,
+    Expression<int>? categoryId,
+    Expression<bool>? isReminding,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (color != null) 'color': color,
+      if (dueDate != null) 'due_date': dueDate,
+      if (startTime != null) 'start_time': startTime,
+      if (endTime != null) 'end_time': endTime,
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+      if (isRepeating != null) 'is_repeating': isRepeating,
+      if (repeatEndDate != null) 'repeat_end_date': repeatEndDate,
+      if (repeatId != null) 'repeat_id': repeatId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (isReminding != null) 'is_reminding': isReminding,
+    });
+  }
+
+  EventsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String?>? description,
+    Value<int>? color,
+    Value<DateTime>? dueDate,
+    Value<DateTime>? startTime,
+    Value<DateTime>? endTime,
+    Value<int>? durationMinutes,
+    Value<bool>? isRepeating,
+    Value<DateTime?>? repeatEndDate,
+    Value<String?>? repeatId,
+    Value<int?>? categoryId,
+    Value<bool>? isReminding,
+  }) {
+    return EventsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      color: color ?? this.color,
+      dueDate: dueDate ?? this.dueDate,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      isRepeating: isRepeating ?? this.isRepeating,
+      repeatEndDate: repeatEndDate ?? this.repeatEndDate,
+      repeatId: repeatId ?? this.repeatId,
+      categoryId: categoryId ?? this.categoryId,
+      isReminding: isReminding ?? this.isReminding,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (startTime.present) {
+      map['start_time'] = Variable<DateTime>(startTime.value);
+    }
+    if (endTime.present) {
+      map['end_time'] = Variable<DateTime>(endTime.value);
+    }
+    if (durationMinutes.present) {
+      map['duration_minutes'] = Variable<int>(durationMinutes.value);
+    }
+    if (isRepeating.present) {
+      map['is_repeating'] = Variable<bool>(isRepeating.value);
+    }
+    if (repeatEndDate.present) {
+      map['repeat_end_date'] = Variable<DateTime>(repeatEndDate.value);
+    }
+    if (repeatId.present) {
+      map['repeat_id'] = Variable<String>(repeatId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (isReminding.present) {
+      map['is_reminding'] = Variable<bool>(isReminding.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EventsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('color: $color, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('durationMinutes: $durationMinutes, ')
+          ..write('isRepeating: $isRepeating, ')
+          ..write('repeatEndDate: $repeatEndDate, ')
+          ..write('repeatId: $repeatId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isReminding: $isReminding')
           ..write(')'))
         .toString();
   }
@@ -1880,6 +2695,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PomodoroSessionsTable pomodoroSessions = $PomodoroSessionsTable(
     this,
   );
+  late final $EventsTable events = $EventsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1889,6 +2705,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categories,
     tasks,
     pomodoroSessions,
+    events,
     appSettings,
   ];
 }
@@ -1898,7 +2715,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required int color,
-      Value<int?> iconCodePoint,
+      Value<String?> note,
       Value<DateTime> createdAt,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
@@ -1906,7 +2723,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> name,
       Value<int> color,
-      Value<int?> iconCodePoint,
+      Value<String?> note,
       Value<DateTime> createdAt,
     });
 
@@ -1928,6 +2745,25 @@ final class $$CategoriesTableReferences
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_tasksRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$EventsTable, List<Event>> _eventsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.events,
+    aliasName: $_aliasNameGenerator(db.categories.id, db.events.categoryId),
+  );
+
+  $$EventsTableProcessedTableManager get eventsRefs {
+    final manager = $$EventsTableTableManager(
+      $_db,
+      $_db.events,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_eventsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -1958,8 +2794,8 @@ class $$CategoriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get iconCodePoint => $composableBuilder(
-    column: $table.iconCodePoint,
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1984,6 +2820,31 @@ class $$CategoriesTableFilterComposer
           }) => $$TasksTableFilterComposer(
             $db: $db,
             $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> eventsRefs(
+    Expression<bool> Function($$EventsTableFilterComposer f) f,
+  ) {
+    final $$EventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.events,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EventsTableFilterComposer(
+            $db: $db,
+            $table: $db.events,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2018,8 +2879,8 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get iconCodePoint => $composableBuilder(
-    column: $table.iconCodePoint,
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2047,10 +2908,8 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<int> get color =>
       $composableBuilder(column: $table.color, builder: (column) => column);
 
-  GeneratedColumn<int> get iconCodePoint => $composableBuilder(
-    column: $table.iconCodePoint,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2079,6 +2938,31 @@ class $$CategoriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> eventsRefs<T extends Object>(
+    Expression<T> Function($$EventsTableAnnotationComposer a) f,
+  ) {
+    final $$EventsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.events,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EventsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.events,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -2094,7 +2978,7 @@ class $$CategoriesTableTableManager
           $$CategoriesTableUpdateCompanionBuilder,
           (Category, $$CategoriesTableReferences),
           Category,
-          PrefetchHooks Function({bool tasksRefs})
+          PrefetchHooks Function({bool tasksRefs, bool eventsRefs})
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
     : super(
@@ -2112,13 +2996,13 @@ class $$CategoriesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int> color = const Value.absent(),
-                Value<int?> iconCodePoint = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
                 color: color,
-                iconCodePoint: iconCodePoint,
+                note: note,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -2126,13 +3010,13 @@ class $$CategoriesTableTableManager
                 Value<int> id = const Value.absent(),
                 required String name,
                 required int color,
-                Value<int?> iconCodePoint = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
                 color: color,
-                iconCodePoint: iconCodePoint,
+                note: note,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -2143,10 +3027,13 @@ class $$CategoriesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tasksRefs = false}) {
+          prefetchHooksCallback: ({tasksRefs = false, eventsRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (tasksRefs) db.tasks],
+              explicitlyWatchedTables: [
+                if (tasksRefs) db.tasks,
+                if (eventsRefs) db.events,
+              ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
@@ -2157,6 +3044,21 @@ class $$CategoriesTableTableManager
                           ._tasksRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$CategoriesTableReferences(db, table, p0).tasksRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.categoryId == item.id),
+                      typedResults: items,
+                    ),
+                  if (eventsRefs)
+                    await $_getPrefetchedData<
+                      Category,
+                      $CategoriesTable,
+                      Event
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CategoriesTableReferences
+                          ._eventsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CategoriesTableReferences(db, table, p0).eventsRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where((e) => e.categoryId == item.id),
                       typedResults: items,
@@ -2181,7 +3083,7 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableUpdateCompanionBuilder,
       (Category, $$CategoriesTableReferences),
       Category,
-      PrefetchHooks Function({bool tasksRefs})
+      PrefetchHooks Function({bool tasksRefs, bool eventsRefs})
     >;
 typedef $$TasksTableCreateCompanionBuilder =
     TasksCompanion Function({
@@ -2199,6 +3101,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int?> categoryId,
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
+      Value<bool> isReminding,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
     TasksCompanion Function({
@@ -2216,6 +3119,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int?> categoryId,
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
+      Value<bool> isReminding,
     });
 
 final class $$TasksTableReferences
@@ -2330,6 +3234,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2456,6 +3365,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2537,6 +3451,11 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
     builder: (column) => column,
   );
 
@@ -2631,6 +3550,7 @@ class $$TasksTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<bool> isReminding = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
                 title: title,
@@ -2646,6 +3566,7 @@ class $$TasksTableTableManager
                 categoryId: categoryId,
                 createdAt: createdAt,
                 completedAt: completedAt,
+                isReminding: isReminding,
               ),
           createCompanionCallback:
               ({
@@ -2663,6 +3584,7 @@ class $$TasksTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<bool> isReminding = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
                 title: title,
@@ -2678,6 +3600,7 @@ class $$TasksTableTableManager
                 categoryId: categoryId,
                 createdAt: createdAt,
                 completedAt: completedAt,
+                isReminding: isReminding,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3075,6 +3998,479 @@ typedef $$PomodoroSessionsTableProcessedTableManager =
       PomodoroSession,
       PrefetchHooks Function({bool taskId})
     >;
+typedef $$EventsTableCreateCompanionBuilder =
+    EventsCompanion Function({
+      Value<int> id,
+      required String title,
+      Value<String?> description,
+      Value<int> color,
+      required DateTime dueDate,
+      required DateTime startTime,
+      required DateTime endTime,
+      required int durationMinutes,
+      Value<bool> isRepeating,
+      Value<DateTime?> repeatEndDate,
+      Value<String?> repeatId,
+      Value<int?> categoryId,
+      Value<bool> isReminding,
+    });
+typedef $$EventsTableUpdateCompanionBuilder =
+    EventsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String?> description,
+      Value<int> color,
+      Value<DateTime> dueDate,
+      Value<DateTime> startTime,
+      Value<DateTime> endTime,
+      Value<int> durationMinutes,
+      Value<bool> isRepeating,
+      Value<DateTime?> repeatEndDate,
+      Value<String?> repeatId,
+      Value<int?> categoryId,
+      Value<bool> isReminding,
+    });
+
+final class $$EventsTableReferences
+    extends BaseReferences<_$AppDatabase, $EventsTable, Event> {
+  $$EventsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.events.categoryId, db.categories.id),
+      );
+
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$EventsTableFilterComposer
+    extends Composer<_$AppDatabase, $EventsTable> {
+  $$EventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isRepeating => $composableBuilder(
+    column: $table.isRepeating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get repeatEndDate => $composableBuilder(
+    column: $table.repeatEndDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repeatId => $composableBuilder(
+    column: $table.repeatId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$EventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $EventsTable> {
+  $$EventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isRepeating => $composableBuilder(
+    column: $table.isRepeating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get repeatEndDate => $composableBuilder(
+    column: $table.repeatEndDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repeatId => $composableBuilder(
+    column: $table.repeatId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$EventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EventsTable> {
+  $$EventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startTime =>
+      $composableBuilder(column: $table.startTime, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endTime =>
+      $composableBuilder(column: $table.endTime, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isRepeating => $composableBuilder(
+    column: $table.isRepeating,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get repeatEndDate => $composableBuilder(
+    column: $table.repeatEndDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get repeatId =>
+      $composableBuilder(column: $table.repeatId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isReminding => $composableBuilder(
+    column: $table.isReminding,
+    builder: (column) => column,
+  );
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$EventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EventsTable,
+          Event,
+          $$EventsTableFilterComposer,
+          $$EventsTableOrderingComposer,
+          $$EventsTableAnnotationComposer,
+          $$EventsTableCreateCompanionBuilder,
+          $$EventsTableUpdateCompanionBuilder,
+          (Event, $$EventsTableReferences),
+          Event,
+          PrefetchHooks Function({bool categoryId})
+        > {
+  $$EventsTableTableManager(_$AppDatabase db, $EventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                Value<DateTime> dueDate = const Value.absent(),
+                Value<DateTime> startTime = const Value.absent(),
+                Value<DateTime> endTime = const Value.absent(),
+                Value<int> durationMinutes = const Value.absent(),
+                Value<bool> isRepeating = const Value.absent(),
+                Value<DateTime?> repeatEndDate = const Value.absent(),
+                Value<String?> repeatId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<bool> isReminding = const Value.absent(),
+              }) => EventsCompanion(
+                id: id,
+                title: title,
+                description: description,
+                color: color,
+                dueDate: dueDate,
+                startTime: startTime,
+                endTime: endTime,
+                durationMinutes: durationMinutes,
+                isRepeating: isRepeating,
+                repeatEndDate: repeatEndDate,
+                repeatId: repeatId,
+                categoryId: categoryId,
+                isReminding: isReminding,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                Value<String?> description = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                required DateTime dueDate,
+                required DateTime startTime,
+                required DateTime endTime,
+                required int durationMinutes,
+                Value<bool> isRepeating = const Value.absent(),
+                Value<DateTime?> repeatEndDate = const Value.absent(),
+                Value<String?> repeatId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<bool> isReminding = const Value.absent(),
+              }) => EventsCompanion.insert(
+                id: id,
+                title: title,
+                description: description,
+                color: color,
+                dueDate: dueDate,
+                startTime: startTime,
+                endTime: endTime,
+                durationMinutes: durationMinutes,
+                isRepeating: isRepeating,
+                repeatEndDate: repeatEndDate,
+                repeatId: repeatId,
+                categoryId: categoryId,
+                isReminding: isReminding,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$EventsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (categoryId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.categoryId,
+                                referencedTable: $$EventsTableReferences
+                                    ._categoryIdTable(db),
+                                referencedColumn: $$EventsTableReferences
+                                    ._categoryIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$EventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EventsTable,
+      Event,
+      $$EventsTableFilterComposer,
+      $$EventsTableOrderingComposer,
+      $$EventsTableAnnotationComposer,
+      $$EventsTableCreateCompanionBuilder,
+      $$EventsTableUpdateCompanionBuilder,
+      (Event, $$EventsTableReferences),
+      Event,
+      PrefetchHooks Function({bool categoryId})
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       Value<int> id,
@@ -3287,6 +4683,8 @@ class $AppDatabaseManager {
       $$TasksTableTableManager(_db, _db.tasks);
   $$PomodoroSessionsTableTableManager get pomodoroSessions =>
       $$PomodoroSessionsTableTableManager(_db, _db.pomodoroSessions);
+  $$EventsTableTableManager get events =>
+      $$EventsTableTableManager(_db, _db.events);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

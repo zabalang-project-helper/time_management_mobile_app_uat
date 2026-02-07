@@ -12,7 +12,7 @@ class Categories extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 50)();
   IntColumn get color => integer()(); // Stored as hex int (e.g., 0xFF4CAF50)
-  IntColumn get iconCodePoint => integer().nullable()(); // Material icon code
+  TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -34,6 +34,7 @@ class Tasks extends Table {
       integer().nullable().references(Categories, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get completedAt => dateTime().nullable()();
+  BoolColumn get isReminding => boolean().withDefault(const Constant(false))();
 }
 
 /// Pomodoro session records for time tracking
@@ -43,6 +44,24 @@ class PomodoroSessions extends Table {
   IntColumn get durationSeconds => integer()();
   DateTimeColumn get completedAt =>
       dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Events for calendar integration
+class Events extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text().withLength(min: 1, max: 100)();
+  TextColumn get description => text().nullable()();
+  IntColumn get color => integer().withDefault(const Constant(0xFF2196F3))();
+  DateTimeColumn get dueDate => dateTime()();
+  DateTimeColumn get startTime => dateTime()();
+  DateTimeColumn get endTime => dateTime()();
+  IntColumn get durationMinutes => integer()();
+  BoolColumn get isRepeating => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get repeatEndDate => dateTime().nullable()();
+  TextColumn get repeatId => text().nullable()();
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+  BoolColumn get isReminding => boolean().withDefault(const Constant(false))();
 }
 
 /// App settings (single row table)
@@ -57,7 +76,7 @@ class AppSettings extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Categories, Tasks, PomodoroSessions, AppSettings])
+@DriftDatabase(tables: [Categories, Tasks, PomodoroSessions, Events, AppSettings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -82,6 +101,10 @@ class AppDatabase extends _$AppDatabase {
   // ============ CATEGORIES ============
   Future<List<Category>> getAllCategories() => select(categories).get();
   Stream<List<Category>> watchAllCategories() => select(categories).watch();
+  Future<Category?> getCategoryById(int? id) {
+    if (id == null) return Future.value(null); // handle null ID
+    return (select(categories)..where((c) => c.id.equals(id))).getSingleOrNull();
+  }
   Future<int> insertCategory(CategoriesCompanion category) =>
       into(categories).insert(category);
   Future<bool> updateCategory(Category category) =>
@@ -89,6 +112,33 @@ class AppDatabase extends _$AppDatabase {
   Future<int> deleteCategory(Category category) =>
       delete(categories).delete(category);
 
+  // ============ EVENTS ============
+  Future<List<Event>> getAllEvents() => select(events).get();
+  Stream<List<Event>> watchAllEvents() => select(events).watch();
+  Stream<List<Event>> watchUpcomingEvents() {
+    final now = DateTime.now();
+
+    // Start of today (00:00)
+    final todayStart = DateTime(now.year, now.month, now.day, now.hour, now.minute, now.second);
+
+    // End of tomorrow (23:59:59)
+    final tomorrowEnd = todayStart.add(const Duration(days: 2)).subtract(const Duration(seconds: 1));
+
+    return (select(events)
+          ..where((e) => e.dueDate.isBetweenValues(todayStart, tomorrowEnd))
+          ..orderBy([
+            (e) => OrderingTerm(expression: e.dueDate),      // first by due date
+            (e) => OrderingTerm(expression: e.startTime),    // then by start time
+          ]))
+        .watch();
+  }
+
+  Future<int> insertEvent(EventsCompanion event) =>
+      into(events).insert(event);
+  Future<bool> updateEvent(Event event) =>
+      update(events).replace(event);
+  Future<int> deleteEvent(Event event) =>
+      delete(events).delete(event);
   // ============ TASKS ============
   Future<List<Task>> getAllTasks() => select(tasks).get();
   Stream<List<Task>> watchAllTasks() => select(tasks).watch();
