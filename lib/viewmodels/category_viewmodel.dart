@@ -13,13 +13,13 @@ class CategoryViewModel extends ChangeNotifier {
   Future<void> addCategory({
     required String name,
     required int color,
-    int? iconCodePoint,
+    required String note,
   }) async {
     await _db.insertCategory(
       CategoriesCompanion(
         name: Value(name),
         color: Value(color),
-        iconCodePoint: Value(iconCodePoint),
+        note: Value(note),
       ),
     );
     notifyListeners();
