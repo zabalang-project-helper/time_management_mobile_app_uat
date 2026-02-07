@@ -418,30 +418,30 @@ class _AddEventDialogState extends State<AddEventDialog> {
                       }),
 
                       // Divider fake
-                      const DropdownMenuItem<int>(
-                        enabled: false,
-                        child: Divider(),
-                      ),
+                      // const DropdownMenuItem<int>(
+                      //   enabled: false,
+                      //   child: Divider(),
+                      // ),
 
                       // Add Category
-                      const DropdownMenuItem<int>(
-                        value: -1,
-                        child: Row(
-                          children: [
-                            Icon(Icons.add, size: 18),
-                            SizedBox(width: 6),
-                            Text("Add Category"),
-                          ],
-                        ),
-                      ),
+                      // const DropdownMenuItem<int>(
+                      //   value: -1,
+                      //   child: Row(
+                      //     children: [
+                      //       Icon(Icons.add, size: 18),
+                      //       SizedBox(width: 6),
+                      //       Text("Add Category"),
+                      //     ],
+                      //   ),
+                      // ),
                     ],
 
                     onChanged: (value) async {
-                      if (value == -1) {
-                        // ➕ Add Category
-                        await _showAddCategoryDialog();
-                        return;
-                      }
+                      // if (value == -1) {
+                      //   // ➕ Add Category
+                      //   await _showAddCategoryDialog();
+                      //   return;
+                      // }
 
                       final selected = categories.firstWhere((c) => c.id == value);
 
@@ -684,7 +684,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
                   onTap: _selectRepeatEndDate,
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
 
               // Reminder
               SwitchListTile(
@@ -696,6 +696,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
                   setState(() => _isReminding = v);
                 },
               ),
+              const SizedBox(height: 24),
 
               // Submit button
               SizedBox(
