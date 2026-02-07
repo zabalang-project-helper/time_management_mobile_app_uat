@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import 'package:time_management_mobile_app/screens/today_tasks_screen.dart';
-import 'package:time_management_mobile_app/widgets/add_category_dialog.dart';
 import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 
@@ -156,23 +155,6 @@ class _AddEventDialogState extends State<AddEventDialog> {
     setState(() {
       _endTime = newEnd;
     });
-  }
-
-  Future<void> _showAddCategoryDialog() async {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddCategoryDialog(
-        onSave: (categories) async {
-          await database.batch((batch) {
-            for (var category in categories) {
-              batch.insert(database.categories, category);
-            }
-          });
-        },
-      ),
-    );
   }
 
   Future<void> _selectRepeatEndDate() async {
@@ -416,33 +398,9 @@ class _AddEventDialogState extends State<AddEventDialog> {
                           ),
                         );
                       }),
-
-                      // Divider fake
-                      // const DropdownMenuItem<int>(
-                      //   enabled: false,
-                      //   child: Divider(),
-                      // ),
-
-                      // Add Category
-                      // const DropdownMenuItem<int>(
-                      //   value: -1,
-                      //   child: Row(
-                      //     children: [
-                      //       Icon(Icons.add, size: 18),
-                      //       SizedBox(width: 6),
-                      //       Text("Add Category"),
-                      //     ],
-                      //   ),
-                      // ),
                     ],
 
                     onChanged: (value) async {
-                      // if (value == -1) {
-                      //   // ➕ Add Category
-                      //   await _showAddCategoryDialog();
-                      //   return;
-                      // }
-
                       final selected = categories.firstWhere((c) => c.id == value);
 
                       setState(() {
