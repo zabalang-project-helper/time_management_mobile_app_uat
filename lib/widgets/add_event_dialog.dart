@@ -95,11 +95,10 @@ class _AddEventDialogState extends State<AddEventDialog> {
     );
     if (picked == null) return;
 
-    final now = DateTime.now();
     final newStart = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      _dueDate.year,
+      _dueDate.month,
+      _dueDate.day,
       picked.hour,
       picked.minute,
     );
@@ -125,11 +124,10 @@ class _AddEventDialogState extends State<AddEventDialog> {
     );
     if (picked == null) return;
 
-    final now = DateTime.now();
     final newEnd = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      _dueDate.year,
+      _dueDate.month,
+      _dueDate.day,
       picked.hour,
       picked.minute,
     );
@@ -350,8 +348,8 @@ class _AddEventDialogState extends State<AddEventDialog> {
                 'Category',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 8),
-
+              const SizedBox(height: 8),   
+                         
               StreamBuilder<List<Category>>(
                 stream: database.watchAllCategories(),
                 builder: (context, snapshot) {
