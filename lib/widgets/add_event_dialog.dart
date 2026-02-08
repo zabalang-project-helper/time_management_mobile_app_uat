@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import 'package:time_management_mobile_app/screens/today_tasks_screen.dart';
+import 'package:time_management_mobile_app/widgets/notification_service.dart';
 import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 
@@ -251,6 +252,21 @@ class _AddEventDialogState extends State<AddEventDialog> {
     }
 
     widget.onSave(eventsToSave);
+
+    if (_isReminding) {
+      for (final event in eventsToSave) {
+        final String eventTitle = event.title.value; // unwrap Value<String>
+        final DateTime eventStart = event.startTime.value; // unwrap Value<DateTime>
+
+        print('Scheduling reminder for event: $eventTitle at $eventStart');
+
+        await NotificationService.instance.scheduleReminder(
+          title: eventTitle,
+          body: 'Event reminder',
+          scheduledAt: eventStart,
+        );
+      }
+    }
     Navigator.pop(context);
   }
 
@@ -349,7 +365,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),   
-                         
+
               StreamBuilder<List<Category>>(
                 stream: database.watchAllCategories(),
                 builder: (context, snapshot) {
