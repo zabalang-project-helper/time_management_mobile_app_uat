@@ -629,6 +629,7 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 priority: companion.priority.value,
                 dueDate: companion.dueDate.value,
                 isRepeating: companion.isRepeating.value,
+                isReminding: companion.isReminding.value,
                 repeatEndDate: companion.repeatEndDate.present
                     ? drift.Value(companion.repeatEndDate.value)
                     : drift.Value(task.repeatEndDate),
