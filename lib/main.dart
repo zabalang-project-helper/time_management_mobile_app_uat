@@ -1,5 +1,10 @@
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:time_management_mobile_app/widgets/notification_service.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'data/database.dart';
 import 'theme/app_theme.dart';
 import 'screens/intro_screen.dart';
@@ -8,6 +13,14 @@ import 'screens/today_tasks_screen.dart' show database;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
+  await NotificationService.instance.init(); 
+  if (Platform.isAndroid) {
+    if (await Permission.notification.isDenied) {
+      final status = await Permission.notification.request();
+      print('Notification permission status: $status');
+    }
+  }
   runApp(const MyApp());
 }
 
