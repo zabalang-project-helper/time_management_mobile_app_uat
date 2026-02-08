@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -129,6 +130,32 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([
             (e) => OrderingTerm(expression: e.dueDate),      // first by due date
             (e) => OrderingTerm(expression: e.startTime),    // then by start time
+          ]))
+        .watch();
+  }
+  Stream<List<Event>> watchEventsForDate(DateTime date) {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    return (select(events)
+          ..where((e) => e.dueDate.isBiggerOrEqualValue(startOfDay))
+          ..where((e) => e.dueDate.isSmallerThanValue(endOfDay))
+          ..orderBy([(e) => OrderingTerm.asc(e.startTime)]))
+        .watch();
+    }
+  Stream<List<Event>> watchEventsForWeek(DateTime weekStart) {
+    final startOfWeek = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
+
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+    return (select(events)
+          ..where((e) => e.dueDate.isBiggerOrEqualValue(startOfWeek))
+          ..where((e) => e.dueDate.isSmallerThanValue(endOfWeek))
+          ..orderBy([
+            (e) => OrderingTerm.asc(e.startTime),
           ]))
         .watch();
   }
