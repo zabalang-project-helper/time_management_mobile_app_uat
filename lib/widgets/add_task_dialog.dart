@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:time_management_mobile_app/screens/today_tasks_screen.dart';
 import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 import '../models/priority.dart';
@@ -29,26 +30,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   late TextEditingController _descriptionController;
 
   late Priority _priority;
+  int? _selectedCategoryId;
   late Color _selectedColor;
   late DateTime _dueDate;
   bool _isRepeating = false;
+  bool _isReminding = false;
   DateTime? _repeatEndDate;
 
   // New Repetition State
   RepeatType _repeatType = RepeatType.daily;
   final Set<int> _selectedWeekDays = {}; // 1 (Mon) - 7 (Sun)
   final Set<int> _selectedMonthDays = {}; // 1 - 31
-
-  final List<Color> _colorOptions = [
-    const Color(0xFF2196F3), // Blue
-    const Color(0xFF4CAF50), // Green
-    const Color(0xFFF44336), // Red
-    const Color(0xFFFF9800), // Orange
-    const Color(0xFF9C27B0), // Purple
-    const Color(0xFF00BCD4), // Cyan
-    const Color(0xFFE91E63), // Pink
-    const Color(0xFF607D8B), // Blue Grey
-  ];
 
   @override
   void initState() {
@@ -61,6 +53,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     _priority = task != null
         ? Priority.fromString(task.priority)
         : Priority.medium;
+    _selectedCategoryId = task?.categoryId;
     _selectedColor = task != null ? Color(task.color) : const Color(0xFF2196F3);
     _dueDate = task?.dueDate ?? widget.initialDate ?? DateTime.now();
     _isRepeating = task?.isRepeating ?? false;
@@ -68,6 +61,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     // Default repetition values
     if (_dueDate.weekday != 0) _selectedWeekDays.add(_dueDate.weekday);
     if (_dueDate.day != 0) _selectedMonthDays.add(_dueDate.day);
+    _isReminding = task?.isReminding ?? false;
   }
 
   @override
@@ -205,6 +199,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
             ? null
             : _descriptionController.text.trim(),
       ),
+      categoryId: drift.Value(_selectedCategoryId),
       color: drift.Value(_selectedColor.toARGB32()),
       priority: drift.Value(_priority.label),
       dueDate: drift.Value(date),
@@ -213,6 +208,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           ? drift.Value(_repeatEndDate)
           : const drift.Value(null),
       repeatId: drift.Value(repeatId),
+      isReminding: drift.Value(_isReminding),
     );
   }
 
@@ -283,49 +279,73 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               ),
               const SizedBox(height: 24),
 
-              // Color picker
+              // Category picker
               const Text(
-                'Color',
+                'Category',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                children: _colorOptions.map((color) {
-                  final isSelected =
-                      _selectedColor.toARGB32() == color.toARGB32();
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedColor = color),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: Colors.white, width: 3)
-                            : null,
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.5),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: isSelected
-                          ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 20,
+
+              StreamBuilder<List<Category>>(
+                stream: database.watchAllCategories(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+
+                  final categories = snapshot.data!;
+
+                  return DropdownButtonFormField<int>(
+                    value: _selectedCategoryId,
+                    decoration: InputDecoration(
+                      labelText: "Select A Category",
+                      border: const OutlineInputBorder(),
+                      suffixIcon: _selectedCategoryId != null
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedCategoryId = null;
+                                  _selectedColor = Colors.grey;
+                                });
+                              },
                             )
                           : null,
                     ),
+
+                    items: [
+                      // Categories
+                      ...categories.map((cat) {
+                        return DropdownMenuItem<int>(
+                          value: cat.id,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: Color(cat.color),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(cat.name),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+
+                    onChanged: (value) async {
+                      final selected = categories.firstWhere((c) => c.id == value);
+
+                      setState(() {
+                        _selectedCategoryId = value;
+                        _selectedColor = Color(selected.color);
+                      });
+                    },
                   );
-                }).toList(),
+                },
               ),
+
               const SizedBox(height: 24),
 
               // Priority
@@ -526,6 +546,18 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   onTap: _selectRepeatEndDate,
                 ),
               ],
+              const SizedBox(height: 8),
+
+              // Reminder
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Reminder'),
+                subtitle: const Text('Notify before task'),
+                value: _isReminding,
+                onChanged: (v) {
+                  setState(() => _isReminding = v);
+                },
+              ),
               const SizedBox(height: 24),
 
               // Submit button
