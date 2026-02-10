@@ -36,7 +36,7 @@ class EventCard extends StatelessWidget {
     return Dismissible(
       key: Key('event_${event.id}'),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete?.call(),
+      onDismissed: (_) => onDelete(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
