@@ -71,17 +71,20 @@ class AppSettings extends Table {
   IntColumn get shortBreakMinutes => integer().withDefault(const Constant(5))();
   IntColumn get longBreakMinutes => integer().withDefault(const Constant(15))();
   BoolColumn get hasSeenIntro => boolean().withDefault(const Constant(false))();
+  TextColumn get themeMode => text().withDefault(const Constant('system'))();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Categories, Tasks, PomodoroSessions, Events, AppSettings])
+@DriftDatabase(
+  tables: [Categories, Tasks, PomodoroSessions, Events, AppSettings],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -94,6 +97,30 @@ class AppDatabase extends _$AppDatabase {
           // We added the repeatId column in v3
           await m.addColumn(tasks, tasks.repeatId);
         }
+        if (from < 4) {
+          try {
+            await m.addColumn(appSettings, appSettings.themeMode);
+          } catch (e) {
+            print('Error adding themeMode column (likely already exists): $e');
+          }
+          try {
+            await m.createTable(events);
+          } catch (e) {
+            print('Events table creation error (ignored): $e');
+          }
+        }
+      },
+      beforeOpen: (details) async {
+        await customStatement('PRAGMA foreign_keys = ON');
+
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await customStatement(
+          'UPDATE tasks SET due_date = ? WHERE due_date IS NULL',
+          [now],
+        );
+        await customStatement(
+          'UPDATE tasks SET title = \'Untitled\' WHERE title IS NULL',
+        );
       },
     );
   }
@@ -103,8 +130,11 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<Category>> watchAllCategories() => select(categories).watch();
   Future<Category?> getCategoryById(int? id) {
     if (id == null) return Future.value(null); // handle null ID
-    return (select(categories)..where((c) => c.id.equals(id))).getSingleOrNull();
+    return (select(
+      categories,
+    )..where((c) => c.id.equals(id))).getSingleOrNull();
   }
+
   Future<int> insertCategory(CategoriesCompanion category) =>
       into(categories).insert(category);
   Future<bool> updateCategory(Category category) =>
@@ -119,19 +149,29 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now();
 
     // Start of today (00:00)
-    final todayStart = DateTime(now.year, now.month, now.day, now.hour, now.minute, now.second);
+    final todayStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+      now.second,
+    );
 
     // End of tomorrow (23:59:59)
-    final tomorrowEnd = todayStart.add(const Duration(days: 2)).subtract(const Duration(seconds: 1));
+    final tomorrowEnd = todayStart
+        .add(const Duration(days: 2))
+        .subtract(const Duration(seconds: 1));
 
     return (select(events)
           ..where((e) => e.dueDate.isBetweenValues(todayStart, tomorrowEnd))
           ..orderBy([
-            (e) => OrderingTerm(expression: e.dueDate),      // first by due date
-            (e) => OrderingTerm(expression: e.startTime),    // then by start time
+            (e) => OrderingTerm(expression: e.dueDate), // first by due date
+            (e) => OrderingTerm(expression: e.startTime), // then by start time
           ]))
         .watch();
   }
+
   Stream<List<Event>> watchEventsForDate(DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -140,7 +180,8 @@ class AppDatabase extends _$AppDatabase {
           ..where((e) => e.dueDate.isSmallerThanValue(endOfDay))
           ..orderBy([(e) => OrderingTerm.asc(e.startTime)]))
         .watch();
-    }
+  }
+
   Stream<List<Event>> watchEventsForWeek(DateTime weekStart) {
     final startOfWeek = DateTime(
       weekStart.year,
@@ -153,18 +194,13 @@ class AppDatabase extends _$AppDatabase {
     return (select(events)
           ..where((e) => e.dueDate.isBiggerOrEqualValue(startOfWeek))
           ..where((e) => e.dueDate.isSmallerThanValue(endOfWeek))
-          ..orderBy([
-            (e) => OrderingTerm.asc(e.startTime),
-          ]))
+          ..orderBy([(e) => OrderingTerm.asc(e.startTime)]))
         .watch();
   }
 
-  Future<int> insertEvent(EventsCompanion event) =>
-      into(events).insert(event);
-  Future<bool> updateEvent(Event event) =>
-      update(events).replace(event);
-  Future<int> deleteEvent(Event event) =>
-      delete(events).delete(event);
+  Future<int> insertEvent(EventsCompanion event) => into(events).insert(event);
+  Future<bool> updateEvent(Event event) => update(events).replace(event);
+  Future<int> deleteEvent(Event event) => delete(events).delete(event);
   // ============ TASKS ============
   Future<List<Task>> getAllTasks() => select(tasks).get();
   Stream<List<Task>> watchAllTasks() => select(tasks).watch();
@@ -233,6 +269,8 @@ class AppDatabase extends _$AppDatabase {
     }
     return result;
   }
+
+  Stream<AppSetting> watchSettings() => select(appSettings).watchSingle();
 
   Future<void> updateSettings(AppSettingsCompanion settings) async {
     await (update(appSettings)..where((s) => s.id.equals(1))).write(settings);

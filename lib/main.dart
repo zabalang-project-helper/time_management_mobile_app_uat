@@ -14,7 +14,7 @@ import 'screens/today_tasks_screen.dart' show database;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
-  await NotificationService.instance.init(); 
+  await NotificationService.instance.init();
   if (Platform.isAndroid) {
     if (await Permission.notification.isDenied) {
       final status = await Permission.notification.request();
@@ -58,22 +58,53 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
-      );
-    }
+    return FutureBuilder(
+      future: _isLoading ? null : Future.value(true),
+      builder: (context, _) {
+        if (_isLoading) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.system,
+            home: const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
 
-    return MaterialApp(
-      title: 'TimeOptimize',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      home: _showIntro
-          ? IntroScreen(onComplete: _onIntroComplete)
-          : const MainShell(),
+        return StreamBuilder<AppSetting>(
+          stream: database.watchSettings(),
+          builder: (context, snapshot) {
+            final settings = snapshot.data;
+            final themeModeString = settings?.themeMode ?? 'system';
+
+            ThemeMode themeMode;
+            switch (themeModeString) {
+              case 'light':
+                themeMode = ThemeMode.light;
+                break;
+              case 'dark':
+                themeMode = ThemeMode.dark;
+                break;
+              case 'system':
+              default:
+                themeMode = ThemeMode.system;
+            }
+
+            return MaterialApp(
+              title: 'TimeOptimize',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeMode,
+              home: _showIntro
+                  ? IntroScreen(onComplete: _onIntroComplete)
+                  : const MainShell(),
+            );
+          },
+        );
+      },
     );
   }
 }

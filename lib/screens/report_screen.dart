@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:drift/drift.dart' as drift;
 import '../data/database.dart';
 import '../theme/app_theme.dart';
 import 'today_tasks_screen.dart' show database;
@@ -204,7 +205,10 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      // Settings Section (Theme)
+                      _buildSettingsSection(context),
+                      const SizedBox(height: 24),
+
                       // Range Display Text
                       if (_selectedFilter == DateFilter.custom &&
                           _customDateRange != null)
@@ -540,6 +544,61 @@ class _ReportScreenState extends State<ReportScreen> {
       return '${hours}h ${minutes}m';
     }
     return '${minutes}m';
+  }
+
+  Widget _buildSettingsSection(BuildContext context) {
+    return StreamBuilder<AppSetting>(
+      stream: database.watchSettings(),
+      builder: (context, snapshot) {
+        final settings = snapshot.data;
+        if (settings == null) return const SizedBox.shrink();
+
+        final themeMode = settings.themeMode;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.brightness_6,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'App Theme',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                ],
+              ),
+              DropdownButton<String>(
+                value: themeMode,
+                underline: const SizedBox(),
+                items: const [
+                  DropdownMenuItem(value: 'system', child: Text('System')),
+                  DropdownMenuItem(value: 'light', child: Text('Light')),
+                  DropdownMenuItem(value: 'dark', child: Text('Dark')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    database.updateSettings(
+                      AppSettingsCompanion(themeMode: drift.Value(value)),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

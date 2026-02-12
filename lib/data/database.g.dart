@@ -2383,6 +2383,18 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _themeModeMeta = const VerificationMeta(
+    'themeMode',
+  );
+  @override
+  late final GeneratedColumn<String> themeMode = GeneratedColumn<String>(
+    'theme_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('system'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2390,6 +2402,7 @@ class $AppSettingsTable extends AppSettings
     shortBreakMinutes,
     longBreakMinutes,
     hasSeenIntro,
+    themeMode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2442,6 +2455,12 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('theme_mode')) {
+      context.handle(
+        _themeModeMeta,
+        themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta),
+      );
+    }
     return context;
   }
 
@@ -2471,6 +2490,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}has_seen_intro'],
       )!,
+      themeMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}theme_mode'],
+      )!,
     );
   }
 
@@ -2486,12 +2509,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final int shortBreakMinutes;
   final int longBreakMinutes;
   final bool hasSeenIntro;
+  final String themeMode;
   const AppSetting({
     required this.id,
     required this.pomodoroMinutes,
     required this.shortBreakMinutes,
     required this.longBreakMinutes,
     required this.hasSeenIntro,
+    required this.themeMode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2501,6 +2526,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['short_break_minutes'] = Variable<int>(shortBreakMinutes);
     map['long_break_minutes'] = Variable<int>(longBreakMinutes);
     map['has_seen_intro'] = Variable<bool>(hasSeenIntro);
+    map['theme_mode'] = Variable<String>(themeMode);
     return map;
   }
 
@@ -2511,6 +2537,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       shortBreakMinutes: Value(shortBreakMinutes),
       longBreakMinutes: Value(longBreakMinutes),
       hasSeenIntro: Value(hasSeenIntro),
+      themeMode: Value(themeMode),
     );
   }
 
@@ -2525,6 +2552,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       shortBreakMinutes: serializer.fromJson<int>(json['shortBreakMinutes']),
       longBreakMinutes: serializer.fromJson<int>(json['longBreakMinutes']),
       hasSeenIntro: serializer.fromJson<bool>(json['hasSeenIntro']),
+      themeMode: serializer.fromJson<String>(json['themeMode']),
     );
   }
   @override
@@ -2536,6 +2564,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'shortBreakMinutes': serializer.toJson<int>(shortBreakMinutes),
       'longBreakMinutes': serializer.toJson<int>(longBreakMinutes),
       'hasSeenIntro': serializer.toJson<bool>(hasSeenIntro),
+      'themeMode': serializer.toJson<String>(themeMode),
     };
   }
 
@@ -2545,12 +2574,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? shortBreakMinutes,
     int? longBreakMinutes,
     bool? hasSeenIntro,
+    String? themeMode,
   }) => AppSetting(
     id: id ?? this.id,
     pomodoroMinutes: pomodoroMinutes ?? this.pomodoroMinutes,
     shortBreakMinutes: shortBreakMinutes ?? this.shortBreakMinutes,
     longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
     hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
+    themeMode: themeMode ?? this.themeMode,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -2567,6 +2598,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       hasSeenIntro: data.hasSeenIntro.present
           ? data.hasSeenIntro.value
           : this.hasSeenIntro,
+      themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
     );
   }
 
@@ -2577,7 +2609,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('pomodoroMinutes: $pomodoroMinutes, ')
           ..write('shortBreakMinutes: $shortBreakMinutes, ')
           ..write('longBreakMinutes: $longBreakMinutes, ')
-          ..write('hasSeenIntro: $hasSeenIntro')
+          ..write('hasSeenIntro: $hasSeenIntro, ')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
@@ -2589,6 +2622,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     shortBreakMinutes,
     longBreakMinutes,
     hasSeenIntro,
+    themeMode,
   );
   @override
   bool operator ==(Object other) =>
@@ -2598,7 +2632,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.pomodoroMinutes == this.pomodoroMinutes &&
           other.shortBreakMinutes == this.shortBreakMinutes &&
           other.longBreakMinutes == this.longBreakMinutes &&
-          other.hasSeenIntro == this.hasSeenIntro);
+          other.hasSeenIntro == this.hasSeenIntro &&
+          other.themeMode == this.themeMode);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -2607,12 +2642,14 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> shortBreakMinutes;
   final Value<int> longBreakMinutes;
   final Value<bool> hasSeenIntro;
+  final Value<String> themeMode;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.pomodoroMinutes = const Value.absent(),
     this.shortBreakMinutes = const Value.absent(),
     this.longBreakMinutes = const Value.absent(),
     this.hasSeenIntro = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2620,6 +2657,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.shortBreakMinutes = const Value.absent(),
     this.longBreakMinutes = const Value.absent(),
     this.hasSeenIntro = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -2627,6 +2665,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? shortBreakMinutes,
     Expression<int>? longBreakMinutes,
     Expression<bool>? hasSeenIntro,
+    Expression<String>? themeMode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2634,6 +2673,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (shortBreakMinutes != null) 'short_break_minutes': shortBreakMinutes,
       if (longBreakMinutes != null) 'long_break_minutes': longBreakMinutes,
       if (hasSeenIntro != null) 'has_seen_intro': hasSeenIntro,
+      if (themeMode != null) 'theme_mode': themeMode,
     });
   }
 
@@ -2643,6 +2683,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? shortBreakMinutes,
     Value<int>? longBreakMinutes,
     Value<bool>? hasSeenIntro,
+    Value<String>? themeMode,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -2650,6 +2691,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       shortBreakMinutes: shortBreakMinutes ?? this.shortBreakMinutes,
       longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
       hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -2671,6 +2713,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (hasSeenIntro.present) {
       map['has_seen_intro'] = Variable<bool>(hasSeenIntro.value);
     }
+    if (themeMode.present) {
+      map['theme_mode'] = Variable<String>(themeMode.value);
+    }
     return map;
   }
 
@@ -2681,7 +2726,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('pomodoroMinutes: $pomodoroMinutes, ')
           ..write('shortBreakMinutes: $shortBreakMinutes, ')
           ..write('longBreakMinutes: $longBreakMinutes, ')
-          ..write('hasSeenIntro: $hasSeenIntro')
+          ..write('hasSeenIntro: $hasSeenIntro, ')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
@@ -4478,6 +4524,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> shortBreakMinutes,
       Value<int> longBreakMinutes,
       Value<bool> hasSeenIntro,
+      Value<String> themeMode,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -4486,6 +4533,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> shortBreakMinutes,
       Value<int> longBreakMinutes,
       Value<bool> hasSeenIntro,
+      Value<String> themeMode,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -4519,6 +4567,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get hasSeenIntro => $composableBuilder(
     column: $table.hasSeenIntro,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4556,6 +4609,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.hasSeenIntro,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -4589,6 +4647,9 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.hasSeenIntro,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get themeMode =>
+      $composableBuilder(column: $table.themeMode, builder: (column) => column);
 }
 
 class $$AppSettingsTableTableManager
@@ -4627,12 +4688,14 @@ class $$AppSettingsTableTableManager
                 Value<int> shortBreakMinutes = const Value.absent(),
                 Value<int> longBreakMinutes = const Value.absent(),
                 Value<bool> hasSeenIntro = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 pomodoroMinutes: pomodoroMinutes,
                 shortBreakMinutes: shortBreakMinutes,
                 longBreakMinutes: longBreakMinutes,
                 hasSeenIntro: hasSeenIntro,
+                themeMode: themeMode,
               ),
           createCompanionCallback:
               ({
@@ -4641,12 +4704,14 @@ class $$AppSettingsTableTableManager
                 Value<int> shortBreakMinutes = const Value.absent(),
                 Value<int> longBreakMinutes = const Value.absent(),
                 Value<bool> hasSeenIntro = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 pomodoroMinutes: pomodoroMinutes,
                 shortBreakMinutes: shortBreakMinutes,
                 longBreakMinutes: longBreakMinutes,
                 hasSeenIntro: hasSeenIntro,
+                themeMode: themeMode,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
