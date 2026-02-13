@@ -34,6 +34,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   bool _isRepeating = false;
   DateTime? _repeatEndDate;
   bool _isReminderActive = false;
+  int _reminderMinutesBefore = 0;
 
   // New Repetition State
   RepeatType _repeatType = RepeatType.daily;
@@ -67,6 +68,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     _isRepeating = task?.isRepeating ?? false;
     _repeatEndDate = task?.repeatEndDate;
     _isReminderActive = task?.isReminderActive ?? false;
+    _reminderMinutesBefore = task?.reminderMinutesBefore ?? 0;
     // Default repetition values
     if (_dueDate.weekday != 0) _selectedWeekDays.add(_dueDate.weekday);
     if (_dueDate.day != 0) _selectedMonthDays.add(_dueDate.day);
@@ -92,6 +94,24 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         // Update defaults if empty
         if (_selectedWeekDays.isEmpty) _selectedWeekDays.add(_dueDate.weekday);
         if (_selectedMonthDays.isEmpty) _selectedMonthDays.add(_dueDate.day);
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_dueDate),
+    );
+    if (picked != null) {
+      setState(() {
+        _dueDate = DateTime(
+          _dueDate.year,
+          _dueDate.month,
+          _dueDate.day,
+          picked.hour,
+          picked.minute,
+        );
       });
     }
   }
@@ -220,6 +240,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           : const drift.Value(null),
       repeatId: drift.Value(repeatId),
       isReminderActive: drift.Value(_isReminderActive),
+      reminderMinutesBefore: drift.Value(_reminderMinutesBefore),
     );
   }
 
@@ -377,6 +398,18 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _selectDate,
               ),
+              // Due Time
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.access_time),
+                title: const Text('Due Time'),
+                subtitle: Text(
+                  '${_dueDate.hour.toString().padLeft(2, '0')}:${_dueDate.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _selectTime,
+              ),
               const Divider(),
 
               // Reminder Toggle
@@ -384,12 +417,46 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                 contentPadding: EdgeInsets.zero,
                 secondary: const Icon(Icons.notifications_active),
                 title: const Text('Set Reminder'),
-                subtitle: const Text('Notify me at due time'),
+                subtitle: const Text('Notify me before due time'),
                 value: _isReminderActive,
                 onChanged: (value) {
                   setState(() => _isReminderActive = value);
                 },
               ),
+
+              // Reminder offset selector
+              if (_isReminderActive)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 8),
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _reminderMinutesBefore,
+                    decoration: const InputDecoration(
+                      labelText: 'Remind me',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('At due time')),
+                      DropdownMenuItem(value: 5, child: Text('5 min before')),
+                      DropdownMenuItem(value: 10, child: Text('10 min before')),
+                      DropdownMenuItem(value: 15, child: Text('15 min before')),
+                      DropdownMenuItem(value: 30, child: Text('30 min before')),
+                      DropdownMenuItem(value: 60, child: Text('1 hour before')),
+                      DropdownMenuItem(
+                        value: 1440,
+                        child: Text('1 day before'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _reminderMinutesBefore = value);
+                      }
+                    },
+                  ),
+                ),
               const Divider(),
 
               // Repeat toggle

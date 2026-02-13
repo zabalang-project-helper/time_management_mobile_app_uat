@@ -31,6 +31,8 @@ class Tasks extends Table {
   DateTimeColumn get repeatEndDate => dateTime().nullable()();
   BoolColumn get isReminderActive =>
       boolean().withDefault(const Constant(false))();
+  IntColumn get reminderMinutesBefore =>
+      integer().withDefault(const Constant(0))();
   TextColumn get repeatId => text().nullable()();
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
@@ -67,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -87,6 +89,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 5) {
           // We added isReminderActive in v5
           await m.addColumn(tasks, tasks.isReminderActive);
+        }
+        if (from < 6) {
+          // We added reminderMinutesBefore in v6
+          await m.addColumn(tasks, tasks.reminderMinutesBefore);
         }
       },
     );

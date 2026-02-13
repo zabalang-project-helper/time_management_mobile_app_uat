@@ -505,6 +505,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _reminderMinutesBeforeMeta =
+      const VerificationMeta('reminderMinutesBefore');
+  @override
+  late final GeneratedColumn<int> reminderMinutesBefore = GeneratedColumn<int>(
+    'reminder_minutes_before',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _repeatIdMeta = const VerificationMeta(
     'repeatId',
   );
@@ -566,6 +577,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     isRepeating,
     repeatEndDate,
     isReminderActive,
+    reminderMinutesBefore,
     repeatId,
     categoryId,
     createdAt,
@@ -668,6 +680,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         ),
       );
     }
+    if (data.containsKey('reminder_minutes_before')) {
+      context.handle(
+        _reminderMinutesBeforeMeta,
+        reminderMinutesBefore.isAcceptableOrUnknown(
+          data['reminder_minutes_before']!,
+          _reminderMinutesBeforeMeta,
+        ),
+      );
+    }
     if (data.containsKey('repeat_id')) {
       context.handle(
         _repeatIdMeta,
@@ -748,6 +769,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_reminder_active'],
       )!,
+      reminderMinutesBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_minutes_before'],
+      )!,
       repeatId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}repeat_id'],
@@ -785,6 +810,7 @@ class Task extends DataClass implements Insertable<Task> {
   final bool isRepeating;
   final DateTime? repeatEndDate;
   final bool isReminderActive;
+  final int reminderMinutesBefore;
   final String? repeatId;
   final int? categoryId;
   final DateTime createdAt;
@@ -801,6 +827,7 @@ class Task extends DataClass implements Insertable<Task> {
     required this.isRepeating,
     this.repeatEndDate,
     required this.isReminderActive,
+    required this.reminderMinutesBefore,
     this.repeatId,
     this.categoryId,
     required this.createdAt,
@@ -824,6 +851,7 @@ class Task extends DataClass implements Insertable<Task> {
       map['repeat_end_date'] = Variable<DateTime>(repeatEndDate);
     }
     map['is_reminder_active'] = Variable<bool>(isReminderActive);
+    map['reminder_minutes_before'] = Variable<int>(reminderMinutesBefore);
     if (!nullToAbsent || repeatId != null) {
       map['repeat_id'] = Variable<String>(repeatId);
     }
@@ -854,6 +882,7 @@ class Task extends DataClass implements Insertable<Task> {
           ? const Value.absent()
           : Value(repeatEndDate),
       isReminderActive: Value(isReminderActive),
+      reminderMinutesBefore: Value(reminderMinutesBefore),
       repeatId: repeatId == null && nullToAbsent
           ? const Value.absent()
           : Value(repeatId),
@@ -884,6 +913,9 @@ class Task extends DataClass implements Insertable<Task> {
       isRepeating: serializer.fromJson<bool>(json['isRepeating']),
       repeatEndDate: serializer.fromJson<DateTime?>(json['repeatEndDate']),
       isReminderActive: serializer.fromJson<bool>(json['isReminderActive']),
+      reminderMinutesBefore: serializer.fromJson<int>(
+        json['reminderMinutesBefore'],
+      ),
       repeatId: serializer.fromJson<String?>(json['repeatId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -905,6 +937,7 @@ class Task extends DataClass implements Insertable<Task> {
       'isRepeating': serializer.toJson<bool>(isRepeating),
       'repeatEndDate': serializer.toJson<DateTime?>(repeatEndDate),
       'isReminderActive': serializer.toJson<bool>(isReminderActive),
+      'reminderMinutesBefore': serializer.toJson<int>(reminderMinutesBefore),
       'repeatId': serializer.toJson<String?>(repeatId),
       'categoryId': serializer.toJson<int?>(categoryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -924,6 +957,7 @@ class Task extends DataClass implements Insertable<Task> {
     bool? isRepeating,
     Value<DateTime?> repeatEndDate = const Value.absent(),
     bool? isReminderActive,
+    int? reminderMinutesBefore,
     Value<String?> repeatId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
     DateTime? createdAt,
@@ -942,6 +976,7 @@ class Task extends DataClass implements Insertable<Task> {
         ? repeatEndDate.value
         : this.repeatEndDate,
     isReminderActive: isReminderActive ?? this.isReminderActive,
+    reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
     repeatId: repeatId.present ? repeatId.value : this.repeatId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     createdAt: createdAt ?? this.createdAt,
@@ -972,6 +1007,9 @@ class Task extends DataClass implements Insertable<Task> {
       isReminderActive: data.isReminderActive.present
           ? data.isReminderActive.value
           : this.isReminderActive,
+      reminderMinutesBefore: data.reminderMinutesBefore.present
+          ? data.reminderMinutesBefore.value
+          : this.reminderMinutesBefore,
       repeatId: data.repeatId.present ? data.repeatId.value : this.repeatId,
       categoryId: data.categoryId.present
           ? data.categoryId.value
@@ -997,6 +1035,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('isRepeating: $isRepeating, ')
           ..write('repeatEndDate: $repeatEndDate, ')
           ..write('isReminderActive: $isReminderActive, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
           ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
@@ -1018,6 +1057,7 @@ class Task extends DataClass implements Insertable<Task> {
     isRepeating,
     repeatEndDate,
     isReminderActive,
+    reminderMinutesBefore,
     repeatId,
     categoryId,
     createdAt,
@@ -1038,6 +1078,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.isRepeating == this.isRepeating &&
           other.repeatEndDate == this.repeatEndDate &&
           other.isReminderActive == this.isReminderActive &&
+          other.reminderMinutesBefore == this.reminderMinutesBefore &&
           other.repeatId == this.repeatId &&
           other.categoryId == this.categoryId &&
           other.createdAt == this.createdAt &&
@@ -1056,6 +1097,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<bool> isRepeating;
   final Value<DateTime?> repeatEndDate;
   final Value<bool> isReminderActive;
+  final Value<int> reminderMinutesBefore;
   final Value<String?> repeatId;
   final Value<int?> categoryId;
   final Value<DateTime> createdAt;
@@ -1072,6 +1114,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isRepeating = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
     this.isReminderActive = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
     this.repeatId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1089,6 +1132,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isRepeating = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
     this.isReminderActive = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
     this.repeatId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1107,6 +1151,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<bool>? isRepeating,
     Expression<DateTime>? repeatEndDate,
     Expression<bool>? isReminderActive,
+    Expression<int>? reminderMinutesBefore,
     Expression<String>? repeatId,
     Expression<int>? categoryId,
     Expression<DateTime>? createdAt,
@@ -1124,6 +1169,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (isRepeating != null) 'is_repeating': isRepeating,
       if (repeatEndDate != null) 'repeat_end_date': repeatEndDate,
       if (isReminderActive != null) 'is_reminder_active': isReminderActive,
+      if (reminderMinutesBefore != null)
+        'reminder_minutes_before': reminderMinutesBefore,
       if (repeatId != null) 'repeat_id': repeatId,
       if (categoryId != null) 'category_id': categoryId,
       if (createdAt != null) 'created_at': createdAt,
@@ -1143,6 +1190,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<bool>? isRepeating,
     Value<DateTime?>? repeatEndDate,
     Value<bool>? isReminderActive,
+    Value<int>? reminderMinutesBefore,
     Value<String?>? repeatId,
     Value<int?>? categoryId,
     Value<DateTime>? createdAt,
@@ -1160,6 +1208,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
       isRepeating: isRepeating ?? this.isRepeating,
       repeatEndDate: repeatEndDate ?? this.repeatEndDate,
       isReminderActive: isReminderActive ?? this.isReminderActive,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
       repeatId: repeatId ?? this.repeatId,
       categoryId: categoryId ?? this.categoryId,
       createdAt: createdAt ?? this.createdAt,
@@ -1203,6 +1253,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (isReminderActive.present) {
       map['is_reminder_active'] = Variable<bool>(isReminderActive.value);
     }
+    if (reminderMinutesBefore.present) {
+      map['reminder_minutes_before'] = Variable<int>(
+        reminderMinutesBefore.value,
+      );
+    }
     if (repeatId.present) {
       map['repeat_id'] = Variable<String>(repeatId.value);
     }
@@ -1232,6 +1287,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('isRepeating: $isRepeating, ')
           ..write('repeatEndDate: $repeatEndDate, ')
           ..write('isReminderActive: $isReminderActive, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
           ..write('repeatId: $repeatId, ')
           ..write('categoryId: $categoryId, ')
           ..write('createdAt: $createdAt, ')
@@ -2296,6 +2352,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<bool> isRepeating,
       Value<DateTime?> repeatEndDate,
       Value<bool> isReminderActive,
+      Value<int> reminderMinutesBefore,
       Value<String?> repeatId,
       Value<int?> categoryId,
       Value<DateTime> createdAt,
@@ -2314,6 +2371,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<bool> isRepeating,
       Value<DateTime?> repeatEndDate,
       Value<bool> isReminderActive,
+      Value<int> reminderMinutesBefore,
       Value<String?> repeatId,
       Value<int?> categoryId,
       Value<DateTime> createdAt,
@@ -2422,6 +2480,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<bool> get isReminderActive => $composableBuilder(
     column: $table.isReminderActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2553,6 +2616,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get repeatId => $composableBuilder(
     column: $table.repeatId,
     builder: (column) => ColumnOrderings(column),
@@ -2643,6 +2711,11 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<bool> get isReminderActive => $composableBuilder(
     column: $table.isReminderActive,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
     builder: (column) => column,
   );
 
@@ -2745,6 +2818,7 @@ class $$TasksTableTableManager
                 Value<bool> isRepeating = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
                 Value<bool> isReminderActive = const Value.absent(),
+                Value<int> reminderMinutesBefore = const Value.absent(),
                 Value<String?> repeatId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2761,6 +2835,7 @@ class $$TasksTableTableManager
                 isRepeating: isRepeating,
                 repeatEndDate: repeatEndDate,
                 isReminderActive: isReminderActive,
+                reminderMinutesBefore: reminderMinutesBefore,
                 repeatId: repeatId,
                 categoryId: categoryId,
                 createdAt: createdAt,
@@ -2779,6 +2854,7 @@ class $$TasksTableTableManager
                 Value<bool> isRepeating = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
                 Value<bool> isReminderActive = const Value.absent(),
+                Value<int> reminderMinutesBefore = const Value.absent(),
                 Value<String?> repeatId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2795,6 +2871,7 @@ class $$TasksTableTableManager
                 isRepeating: isRepeating,
                 repeatEndDate: repeatEndDate,
                 isReminderActive: isReminderActive,
+                reminderMinutesBefore: reminderMinutesBefore,
                 repeatId: repeatId,
                 categoryId: categoryId,
                 createdAt: createdAt,

@@ -35,8 +35,15 @@ class _MyAppState extends State<MyApp> {
     // Load theme preference
     await _themeNotifier.loadTheme();
 
-    // Initialize notifications
-    await NotificationService().init();
+    // Initialize notifications with tap handler
+    await NotificationService().init(
+      onTap: (payload) {
+        if (payload == 'pomodoro') {
+          // Navigate to Focus tab (index 0)
+          MainShell.tabNotifier.value = 0;
+        }
+      },
+    );
     await NotificationService().requestPermissions();
 
     // Check intro status

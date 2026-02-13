@@ -76,13 +76,25 @@ class _PomodoroScreenState extends State<PomodoroScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    NotificationService().cancelPomodoro();
     _audioPlayer.dispose();
     super.dispose();
   }
 
+  String get _modeLabel {
+    switch (_timerMode) {
+      case _TimerMode.focus:
+        return 'Focus';
+      case _TimerMode.shortBreak:
+        return 'Short Break';
+      case _TimerMode.longBreak:
+        return 'Long Break';
+    }
+  }
+
   void _startTimer() {
     if (_runningMode != null && _runningMode != _timerMode) {
-      _endTimes[_runningMode!] = null; // clear old mode
+      _endTimes[_runningMode!] = null;
       _timer?.cancel();
     }
 
@@ -90,6 +102,21 @@ class _PomodoroScreenState extends State<PomodoroScreen>
     _isRunning = true;
     _endTimes[_timerMode] = DateTime.now().add(
       Duration(seconds: _remainingSeconds[_timerMode]!),
+    );
+
+    // Schedule backup notification (fires if app is killed)
+    NotificationService().schedulePomodoro(
+      _endTimes[_timerMode]!,
+      _timerMode == _TimerMode.focus
+          ? 'Focus session complete!'
+          : 'Break is over!',
+      _timerMode == _TimerMode.focus ? 'Take a break.' : 'Ready to focus?',
+    );
+
+    // Show initial ongoing notification
+    NotificationService().showOngoingPomodoro(
+      _modeLabel,
+      _remainingSeconds[_timerMode]!,
     );
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -108,6 +135,9 @@ class _PomodoroScreenState extends State<PomodoroScreen>
             _sessionTimeSpent++;
           }
         });
+
+        // Update ongoing notification each tick
+        NotificationService().showOngoingPomodoro(_modeLabel, remaining);
       } else {
         _timer?.cancel();
         _remainingSeconds[_timerMode] = 0;
@@ -122,12 +152,16 @@ class _PomodoroScreenState extends State<PomodoroScreen>
     _timer?.cancel();
     _endTimes[_timerMode] = null;
     _runningMode = null;
+    NotificationService().cancelPomodoro();
+    NotificationService().cancelOngoingPomodoro();
     setState(() => _isRunning = false);
   }
 
   void _resetTimer() {
     _timer?.cancel();
     _endTimes[_timerMode] = null;
+    NotificationService().cancelPomodoro();
+    NotificationService().cancelOngoingPomodoro();
     setState(() {
       _isRunning = false;
       _remainingSeconds[_timerMode] = _getModeDuration() * 60;
@@ -163,6 +197,14 @@ class _PomodoroScreenState extends State<PomodoroScreen>
   void _onTimerComplete() async {
     _playSound();
 
+    // Show completion notification (cancels ongoing)
+    await NotificationService().showPomodoroComplete(
+      _timerMode == _TimerMode.focus
+          ? 'Focus session complete!'
+          : 'Break is over!',
+      _timerMode == _TimerMode.focus ? 'Take a break.' : 'Ready to focus?',
+    );
+
     // Save session if focus mode
     if (_timerMode == _TimerMode.focus && _selectedTaskId != null) {
       await database.insertPomodoroSession(
@@ -176,14 +218,6 @@ class _PomodoroScreenState extends State<PomodoroScreen>
     }
 
     setState(() => _isRunning = false);
-
-    // Show notification
-    await NotificationService().showPomodoroComplete(
-      _timerMode == _TimerMode.focus
-          ? 'Focus session complete!'
-          : 'Break is over!',
-      _timerMode == _TimerMode.focus ? 'Take a break.' : 'Ready to focus?',
-    );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -490,30 +524,36 @@ class _PomodoroScreenState extends State<PomodoroScreen>
 
                     return Column(
                       children: [
-                        DropdownButtonFormField<int?>(
-                          value: currentSelectedTask?.id,
+                        InputDecorator(
                           decoration: const InputDecoration(
                             labelText: 'Select task to focus on',
                             prefixIcon: Icon(Icons.task_alt),
+                            contentPadding: EdgeInsets.fromLTRB(12, 12, 12, 12),
                           ),
-                          items: [
-                            const DropdownMenuItem<int?>(
-                              value: null,
-                              child: Text('No task selected'),
-                            ),
-                            ...tasks.map(
-                              (t) => DropdownMenuItem<int?>(
-                                value: t.id,
-                                child: Text(
-                                  t.title,
-                                  overflow: TextOverflow.ellipsis,
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int?>(
+                              value: currentSelectedTask?.id,
+                              isDense: true,
+                              items: [
+                                const DropdownMenuItem<int?>(
+                                  value: null,
+                                  child: Text('No task selected'),
                                 ),
-                              ),
+                                ...tasks.map(
+                                  (t) => DropdownMenuItem<int?>(
+                                    value: t.id,
+                                    child: Text(
+                                      t.title,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (taskId) {
+                                setState(() => _selectedTaskId = taskId);
+                              },
                             ),
-                          ],
-                          onChanged: (taskId) {
-                            setState(() => _selectedTaskId = taskId);
-                          },
+                          ),
                         ),
                         if (_selectedTaskId != null) ...[
                           const SizedBox(height: 12),

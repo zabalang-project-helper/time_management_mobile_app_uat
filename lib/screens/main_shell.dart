@@ -5,17 +5,21 @@ import 'calendar_screen.dart';
 import 'pomodoro_screen.dart';
 import 'report_screen.dart';
 
-/// Main shell with bottom navigation
+/// Main shell with bottom navigation.
+///
+/// Exposes a [tabNotifier] so external code (e.g.
+/// notification tap handler) can switch tabs.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
+
+  /// Allows programmatically switching the active tab.
+  static final ValueNotifier<int> tabNotifier = ValueNotifier<int>(1);
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 1; // Default to Tasks page
-
   final List<Widget> _screens = const [
     PomodoroScreen(),
     TodayTasksScreen(),
@@ -24,13 +28,32 @@ class _MainShellState extends State<MainShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    MainShell.tabNotifier.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    MainShell.tabNotifier.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(
+        index: MainShell.tabNotifier.value,
+        children: _screens,
+      ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+        selectedIndex: MainShell.tabNotifier.value,
         onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
+          MainShell.tabNotifier.value = index;
         },
         destinations: const [
           NavigationDestination(
