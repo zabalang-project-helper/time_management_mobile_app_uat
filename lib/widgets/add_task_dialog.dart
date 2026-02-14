@@ -466,11 +466,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Repeat Task'),
-                subtitle: const Text('Create recurring tasks'),
+                subtitle: Text(
+                  widget.existingTask?.repeatId != null
+                      ? 'Recurring settings cannot be changed during edit'
+                      : 'Create recurring tasks',
+                ),
                 value: _isRepeating,
-                onChanged: (value) {
-                  setState(() => _isRepeating = value);
-                },
+                onChanged: widget.existingTask?.repeatId != null
+                    ? null
+                    : (value) {
+                        setState(() => _isRepeating = value);
+                      },
               ),
 
               if (_isRepeating) ...[
@@ -496,11 +502,13 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                     ),
                   ],
                   selected: {_repeatType},
-                  onSelectionChanged: (Set<RepeatType> newSelection) {
-                    setState(() {
-                      _repeatType = newSelection.first;
-                    });
-                  },
+                  onSelectionChanged: widget.existingTask?.repeatId != null
+                      ? null
+                      : (Set<RepeatType> newSelection) {
+                          setState(() {
+                            _repeatType = newSelection.first;
+                          });
+                        },
                 ),
                 const SizedBox(height: 16),
 
@@ -527,15 +535,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                       return FilterChip(
                         label: Text(dayName),
                         selected: isSelected,
-                        onSelected: (bool selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedWeekDays.add(dayIndex);
-                            } else {
-                              _selectedWeekDays.remove(dayIndex);
-                            }
-                          });
-                        },
+                        onSelected: widget.existingTask?.repeatId != null
+                            ? null
+                            : (bool selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedWeekDays.add(dayIndex);
+                                  } else {
+                                    _selectedWeekDays.remove(dayIndex);
+                                  }
+                                });
+                              },
                       );
                     }),
                   ),
@@ -563,15 +573,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                         final dayNum = index + 1;
                         final isSelected = _selectedMonthDays.contains(dayNum);
                         return InkWell(
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedMonthDays.remove(dayNum);
-                              } else {
-                                _selectedMonthDays.add(dayNum);
-                              }
-                            });
-                          },
+                          onTap: widget.existingTask?.repeatId != null
+                              ? null
+                              : () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedMonthDays.remove(dayNum);
+                                    } else {
+                                      _selectedMonthDays.add(dayNum);
+                                    }
+                                  });
+                                },
                           child: Container(
                             decoration: BoxDecoration(
                               color: isSelected
