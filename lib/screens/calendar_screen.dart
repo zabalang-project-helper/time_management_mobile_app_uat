@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/add_task_dialog.dart';
 import '../widgets/task_card.dart';
 import 'package:drift/drift.dart' as drift;
+import '../services/notification_service.dart';
 
 // Use global database from today_tasks_screen
 import 'today_tasks_screen.dart' show database;
@@ -83,12 +84,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddTaskDialog(
+      builder: (dialogContext) => AddTaskDialog(
         existingTask: task,
         onSave: (companions) async {
-          if (companions.length == 1 &&
-              companions.first.repeatId.value == null) {
-            // Single task update (or detached from repeat)
+          String? editChoice;
+
+          if (task.repeatId != null) {
+            editChoice = await showDialog<String>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Edit Repeating Task'),
+                content: const Text(
+                  'Do you want to change only this instance or this and all future instances?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'cancel'),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'single'),
+                    child: const Text('This instance only'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'future'),
+                    child: const Text('This and all future instances'),
+                  ),
+                ],
+              ),
+            );
+
+            if (editChoice == 'cancel' || editChoice == null) return;
+          }
+
+          if (editChoice == 'single' ||
+              (task.repeatId == null && companions.length == 1)) {
+            // Update only this instance
             final companion = companions.first;
             await database.updateTask(
               task.copyWith(
@@ -104,13 +135,51 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 categoryId: companion.categoryId.present
                     ? drift.Value(companion.categoryId.value)
                     : drift.Value(task.categoryId),
-                repeatId: drift.Value(null), // Detach if single update
+                repeatId: const drift.Value(null), // Detach if single update
+                isReminderActive: companion.isReminderActive.value,
+                reminderMinutesBefore: companion.reminderMinutesBefore.present
+                    ? companion.reminderMinutesBefore.value
+                    : task.reminderMinutesBefore,
               ),
             );
+
+            // Reschedule notification
+            final updatedTask = await (database.select(
+              database.tasks,
+            )..where((t) => t.id.equals(task.id))).getSingle();
+
+            await NotificationService().cancelTaskReminder(task.id);
+            if (updatedTask.isReminderActive) {
+              await NotificationService().scheduleTaskReminder(updatedTask);
+            }
           } else {
-            // Multi-task insert implies rewrite/new series.
-            // Delete the OLD task (this instance).
-            await database.deleteTask(task);
+            // "future" choice or rewriting a non-repeating task
+
+            // If it was a repeating task series, clean up old future instances first
+            if (task.repeatId != null) {
+              final tasksToDelete =
+                  await (database.select(database.tasks)..where(
+                        (t) =>
+                            t.repeatId.equals(task.repeatId!) &
+                            t.dueDate.isBiggerOrEqualValue(task.dueDate),
+                      ))
+                      .get();
+
+              for (var t in tasksToDelete) {
+                await NotificationService().cancelTaskReminder(t.id);
+              }
+
+              await (database.delete(database.tasks)..where(
+                    (t) =>
+                        t.repeatId.equals(task.repeatId!) &
+                        t.dueDate.isBiggerOrEqualValue(task.dueDate),
+                  ))
+                  .go();
+            } else {
+              // Not a series yet, or just a single task being rewritten
+              await NotificationService().cancelTaskReminder(task.id);
+              await database.deleteTask(task);
+            }
 
             // Insert all New
             await database.batch((batch) {
@@ -118,6 +187,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 batch.insert(database.tasks, c);
               }
             });
+
+            // Schedule notifications for the new tasks
+            if (companions.isNotEmpty &&
+                companions.first.repeatId.value != null) {
+              final repeatId = companions.first.repeatId.value!;
+              final newTasks = await (database.select(
+                database.tasks,
+              )..where((t) => t.repeatId.equals(repeatId))).get();
+              for (var t in newTasks) {
+                if (t.isReminderActive) {
+                  await NotificationService().scheduleTaskReminder(t);
+                }
+              }
+            } else if (companions.isNotEmpty) {
+              // Single task
+              final lastTasks =
+                  await (database.select(database.tasks)
+                        ..orderBy([(t) => drift.OrderingTerm.desc(t.id)])
+                        ..limit(1))
+                      .get();
+              if (lastTasks.isNotEmpty && lastTasks.first.isReminderActive) {
+                await NotificationService().scheduleTaskReminder(
+                  lastTasks.first,
+                );
+              }
+            }
           }
         },
       ),

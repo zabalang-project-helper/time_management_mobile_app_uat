@@ -349,16 +349,42 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddTaskDialog(
+      builder: (dialogContext) => AddTaskDialog(
         existingTask: task,
         onSave: (companions) async {
-          // Basic handle: delete old and insert new.
-          // NOTE: This will reset task stats if we're not careful, but for MVP repeat logic rewrite it handles "Conversion"
-          // For single edit (list 1), we can try to update.
+          String? editChoice;
 
-          if (companions.length == 1 &&
-              companions.first.repeatId.value == null) {
-            // Single task update (or detached from repeat)
+          if (task.repeatId != null) {
+            editChoice = await showDialog<String>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Edit Repeating Task'),
+                content: const Text(
+                  'Do you want to change only this instance or this and all future instances?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'cancel'),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'single'),
+                    child: const Text('This instance only'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'future'),
+                    child: const Text('This and all future instances'),
+                  ),
+                ],
+              ),
+            );
+
+            if (editChoice == 'cancel' || editChoice == null) return;
+          }
+
+          if (editChoice == 'single' ||
+              (task.repeatId == null && companions.length == 1)) {
+            // Update only this instance
             final companion = companions.first;
             await database.updateTask(
               task.copyWith(
@@ -374,13 +400,13 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 categoryId: companion.categoryId.present
                     ? drift.Value(companion.categoryId.value)
                     : drift.Value(task.categoryId),
-                repeatId: drift.Value(null), // Detach if single update
+                repeatId: const drift.Value(null), // Detach if single update
+                isReminderActive: companion.isReminderActive.value,
+                reminderMinutesBefore: companion.reminderMinutesBefore.value,
               ),
             );
 
             // Reschedule notification
-            // We need to fetch the updated task to be sure or just construct a temporary one
-            // Fetching is safer.
             final updatedTask = await (database.select(
               database.tasks,
             )..where((t) => t.id.equals(task.id))).getSingle();
@@ -390,9 +416,33 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
               await NotificationService().scheduleTaskReminder(updatedTask);
             }
           } else {
-            // Multi-task insert implies rewrite/new series.
-            // Delete the OLD task (this instance).
-            await database.deleteTask(task);
+            // "future" choice or rewriting a non-repeating task (rare but possible if toggle enabled)
+
+            // If it was a repeating task series, clean up old future instances first
+            if (task.repeatId != null) {
+              final tasksToDelete =
+                  await (database.select(database.tasks)..where(
+                        (t) =>
+                            t.repeatId.equals(task.repeatId!) &
+                            t.dueDate.isBiggerOrEqualValue(task.dueDate),
+                      ))
+                      .get();
+
+              for (var t in tasksToDelete) {
+                await NotificationService().cancelTaskReminder(t.id);
+              }
+
+              await (database.delete(database.tasks)..where(
+                    (t) =>
+                        t.repeatId.equals(task.repeatId!) &
+                        t.dueDate.isBiggerOrEqualValue(task.dueDate),
+                  ))
+                  .go();
+            } else {
+              // Not a series yet, or just a single task being rewritten
+              await NotificationService().cancelTaskReminder(task.id);
+              await database.deleteTask(task);
+            }
 
             // Insert all New
             await database.batch((batch) {
@@ -401,10 +451,7 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
               }
             });
 
-            // Reschedule mechanism for batch insert is tricky without IDs.
-            // For now, we accept that re-created repeating tasks might missing notifications
-            // UNLESS we query them by repeatId.
-            // Let's query them by repeatId (if available) and schedule.
+            // Schedule notifications for the new tasks
             if (companions.isNotEmpty &&
                 companions.first.repeatId.value != null) {
               final repeatId = companions.first.repeatId.value!;
@@ -415,6 +462,20 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
                 if (t.isReminderActive) {
                   await NotificationService().scheduleTaskReminder(t);
                 }
+              }
+            } else if (companions.isNotEmpty) {
+              // Single task (though this branch is usually for batch)
+              // We'd need the ID, which batch doesn't return easily for multiple.
+              // But for the sake of completion:
+              final lastTasks =
+                  await (database.select(database.tasks)
+                        ..orderBy([(t) => drift.OrderingTerm.desc(t.id)])
+                        ..limit(1))
+                      .get();
+              if (lastTasks.isNotEmpty && lastTasks.first.isReminderActive) {
+                await NotificationService().scheduleTaskReminder(
+                  lastTasks.first,
+                );
               }
             }
           }

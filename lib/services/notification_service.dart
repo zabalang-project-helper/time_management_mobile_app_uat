@@ -92,6 +92,9 @@ class NotificationService {
 
     // Handle snooze action
     if (details.actionId == snoozeActionId) {
+      if (details.id != null) {
+        _notificationsPlugin.cancel(id: details.id!);
+      }
       final payload = details.payload;
       if (payload != null && payload.startsWith('task:')) {
         final parts = payload.split(':');
@@ -426,6 +429,7 @@ class NotificationService {
 
     final snoozeTime = DateTime.now().add(Duration(minutes: snoozeMinutes));
 
+    // --- 1. zonedSchedule (background fallback) ---
     try {
       await _notificationsPlugin.zonedSchedule(
         id: taskId,
@@ -456,15 +460,29 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: 'task:$taskId:$taskTitle',
       );
-      _log('Snoozed reminder scheduled at $snoozeTime');
+      _log('Snoozed zonedSchedule set at $snoozeTime');
     } catch (e) {
-      _log('Error snoozing task reminder: $e');
+      _log('Error snoozing task reminder (zonedSchedule): $e');
     }
+
+    // --- 2. In-app Timer fallback ---
+    _activeTimers[taskId]?.cancel();
+    final delay = snoozeTime.difference(DateTime.now());
+    _log(
+      'Setting in-app snooze timer fallback: ${delay.inSeconds}s until fire',
+    );
+    _activeTimers[taskId] = Timer(delay, () {
+      _log('In-app snooze timer fired for: $taskTitle');
+      _showTaskReminderNow(taskId, taskTitle);
+      _activeTimers.remove(taskId);
+    });
   }
 
   /// Cancels a task reminder by task ID.
   Future<void> cancelTaskReminder(int taskId) async {
     _log('Cancelling reminder for task ID: $taskId');
+    _activeTimers[taskId]?.cancel();
+    _activeTimers.remove(taskId);
     await _notificationsPlugin.cancel(id: taskId);
   }
 }

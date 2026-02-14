@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
+import 'dart:async';
 import '../data/database.dart';
 import '../models/priority.dart';
 
@@ -128,7 +129,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_isRepeating && _repeatEndDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -214,12 +215,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         }
       }
 
-      widget.onSave(tasksToSave);
+      final FutureOr<void> result = widget.onSave(tasksToSave);
+      if (result is Future) {
+        await result;
+      }
 
-      // Handle notification scheduling
-      // Scheduling is delegated to the caller or DB layer for simplicity
-
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
